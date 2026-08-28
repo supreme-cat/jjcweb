@@ -1,0 +1,15 @@
+<script>
+  async function loadUser() {
+    const res = await fetch('/api/user');
+    const data = await res.json();
+
+    if (data.authenticated) {
+      document.getElementById('welcome').innerText = `Welcome, ${data.user.username}!`;
+      document.getElementById('roblox-info').innerText = data.user.robloxUsername 
+        ? `Linked Roblox: ${data.user.robloxUsername} (${data.user.robloxId})`
+        : 'No Roblox account verified via RoVer.';
+    }
+  }
+
+  loadUser();
+</script>
