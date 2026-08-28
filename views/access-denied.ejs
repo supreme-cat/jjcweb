@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Access Denied</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="card">
+        <div class="badge-icon">✕</div>
+        <h1>Access Denied</h1>
+        <p>Your account (<strong><%= user.username %></strong>) does not have the required staff permissions to enter this area.</p>
+        <a href="/auth/logout" class="btn btn-primary">Switch Account</a>
+    </div>
+</body>
+</html>

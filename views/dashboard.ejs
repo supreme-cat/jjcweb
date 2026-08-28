@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff Portal - Dashboard</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="card">
+        <% if (user.avatar) { %>
+            <img class="avatar" src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png" alt="Avatar">
+        <% } %>
+        <h1>Welcome, <%= user.username %></h1>
+        <p>This portal is currently under active development. Check back soon for management controls.</p>
+        <a href="/auth/logout" class="btn btn-secondary">Logout</a>
+    </div>
+</body>
+</html>
