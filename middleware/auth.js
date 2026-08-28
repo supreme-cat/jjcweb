@@ -19,8 +19,12 @@ async function ensureStaff(req, res, next) {
         }
 
         const member = await guild.members.fetch(req.user.id).catch(() => null);
+        
+        // Parse the comma-separated role IDs from .env
+        const allowedRoles = (process.env.STAFF_ROLE_ID || '').split(',').map(id => id.trim());
+        const hasStaffRole = member && allowedRoles.some(roleId => member.roles.cache.has(roleId));
 
-        if (!member || !member.roles.cache.has(process.env.STAFF_ROLE_ID)) {
+        if (!member || !hasStaffRole) {
             return res.render('access-denied', { user: req.user });
         }
 
