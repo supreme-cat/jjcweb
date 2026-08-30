@@ -3,15 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Access Denied</title>
+    <title>Access Denied - JJC Production</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js" defer></script>
 </head>
-<body>
-    <div class="card">
-        <div class="badge-icon">✕</div>
-        <h1>Access Denied</h1>
-        <p>Your account (<strong><%= user.username %></strong>) does not have the required staff permissions to enter this area.</p>
-        <a href="/auth/logout" class="btn btn-primary">Switch Account</a>
+<body style="display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px;">
+    <div class="welcome-card" style="width: min(100%, 440px);">
+        <div style="width: 52px; height: 52px; border-radius: 50%; background: var(--red-bg); border: 1px solid var(--red-border); color: #f87171; display: grid; place-items: center; margin: 0 auto 16px; font-size: 22px; font-weight: 700;">✕</div>
+        <h2 style="margin-bottom: 8px;">Access Denied</h2>
+        <p style="margin-bottom: 24px;">Your Discord account (<%= user ? user.username : 'Unknown' %>) does not have the required staff role to access this portal.</p>
+        <a href="/auth/logout" class="btn btn-secondary" style="width: 100%; min-height: 42px;">
+            <span>Switch Discord Account</span>
+        </a>
     </div>
 </body>
 </html>

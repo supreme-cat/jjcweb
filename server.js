@@ -15,16 +15,23 @@ require('./config/passport')(passport);
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// Middleware setup
+// Static files & body parsers
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 
+// Persistent Session Setup
 app.use(
     session({
-        secret: process.env.SESSION_SECRET,
+        secret: process.env.SESSION_SECRET || 'jjc_production_session_secure_key_2026',
         resave: false,
-        saveUninitialized: false
+        saveUninitialized: false,
+        cookie: {
+            maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days persistent session
+            httpOnly: true,
+            sameSite: 'lax',
+            secure: false
+        }
     })
 );
 

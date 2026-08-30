@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff History - JJC Production</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js" defer></script>
+</head>
+<body>
+    <header class="app-header">
+        <div class="header-left">
+            <a href="/dashboard" class="icon-button" title="Back"><i data-lucide="arrow-left"></i></a>
+            <div class="header-title">
+                <h1>Staff History</h1>
+                <span><%= staffAnalytics.length %> members</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="user-tag">
+                <% if (user.avatar) { %><img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png" alt=""><% } %>
+                <span><%= user.username %></span>
+            </div>
+            <a href="/auth/logout" class="icon-button logout-button" title="Logout"><i data-lucide="log-out"></i></a>
+        </div>
+    </header>
+
+    <main style="padding: 24px; max-width: 1300px; margin: 0 auto;">
+        <% if (!staffAnalytics.length) { %>
+            <div class="empty-box" style="padding: 56px; margin-top: 40px;">No staff members found. Staff appear here after logging into the portal.</div>
+        <% } else { %>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px;">
+                <% staffAnalytics.forEach(staff => { %>
+                    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px;">
+                        <!-- Staff Header -->
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                            <% if (staff.discordAvatar) { %>
+                                <img src="<%= staff.discordAvatar %>" style="width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--border);" alt="">
+                            <% } else { %>
+                                <div style="width: 44px; height: 44px; border-radius: 50%; background: var(--surface-muted); border: 1px solid var(--border); display: grid; place-items: center; font-weight: 700;"><%= (staff.discordTag || '?')[0].toUpperCase() %></div>
+                            <% } %>
+                            <div>
+                                <strong style="font-size: 15px; display: block;"><%= staff.discordTag %></strong>
+                                <small style="font-size: 11px; color: var(--text-dim);">
+                                    <%= staff.robloxUsername ? `Roblox: ${staff.robloxUsername}` : 'Roblox: Not Verified' %>
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- Stats Row -->
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px;">
+                            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 8px; text-align: center;">
+                                <div style="font-size: 20px; font-weight: 700; color: #60a5fa;"><%= staff.notesCount %></div>
+                                <div style="font-size: 10px; color: var(--text-dim); text-transform: uppercase; font-weight: 700; margin-top: 2px;">Notes</div>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 8px; text-align: center;">
+                                <div style="font-size: 20px; font-weight: 700; color: #34d399;"><%= staff.sessionsCount %></div>
+                                <div style="font-size: 10px; color: var(--text-dim); text-transform: uppercase; font-weight: 700; margin-top: 2px;">Sessions</div>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 8px; text-align: center;">
+                                <div style="font-size: 20px; font-weight: 700; color: #f87171;"><%= staff.kicksCount %></div>
+                                <div style="font-size: 10px; color: var(--text-dim); text-transform: uppercase; font-weight: 700; margin-top: 2px;">Kicks</div>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 8px; text-align: center;">
+                                <div style="font-size: 20px; font-weight: 700; color: #d8b4fe;"><%= staff.overridesCount %></div>
+                                <div style="font-size: 10px; color: var(--text-dim); text-transform: uppercase; font-weight: 700; margin-top: 2px;">Overrides</div>
+                            </div>
+                        </div>
+
+                        <!-- Last Seen -->
+                        <div style="font-size: 12px; color: var(--text-dim); margin-bottom: 10px;">
+                            Last active: <%= staff.lastSeen ? new Date(staff.lastSeen).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Never' %>
+                        </div>
+
+                        <!-- Recent Actions -->
+                        <% if (staff.recentActions && staff.recentActions.length) { %>
+                            <div>
+                                <div style="font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid var(--border);">Recent Actions</div>
+                                <div style="display: flex; flex-direction: column; gap: 5px;">
+                                    <% staff.recentActions.slice(0, 5).forEach(action => { %>
+                                        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                                            <span style="font-size: 12px; flex: 1; word-break: break-word;"><%= action.action %></span>
+                                            <span style="font-size: 10px; color: var(--text-dim); white-space: nowrap; font-family: monospace;"><%= new Date(action.timestamp).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) %></span>
+                                        </div>
+                                    <% }) %>
+                                </div>
+                            </div>
+                        <% } else { %>
+                            <div style="font-size: 12px; color: var(--text-dim);">No actions recorded yet.</div>
+                        <% } %>
+                    </div>
+                <% }) %>
+            </div>
+        <% } %>
+    </main>
+
+    <script>document.addEventListener('DOMContentLoaded', () => { if (window.lucide) lucide.createIcons(); });</script>
+</body>
+</html>

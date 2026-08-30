@@ -3,14 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JJC Portal - Login</title>
+    <title>Login - JJC Production</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js" defer></script>
 </head>
-<body>
-    <div class="card">
-        <h1>Staff Portal</h1>
-        <p>Sign in with your Discord account to access management utilities and internal tools.</p>
-        <a href="/auth/discord" class="btn btn-primary">Login with Discord</a>
+<body style="display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px;">
+    <div class="welcome-card" style="width: min(100%, 420px);">
+        <h2 style="margin-bottom: 8px;">JJC Production</h2>
+        <p style="margin-bottom: 24px;">Sign in with your Discord account to access the staff portal and management tools.</p>
+        <a href="/auth/discord" class="btn btn-primary" style="width: 100%; min-height: 44px; font-size: 14px;">
+            <span>Login with Discord</span>
+        </a>
     </div>
 </body>
 </html>

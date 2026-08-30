@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session Panel - JJC Production</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js" defer></script>
+    <script type="module" src="/js/dashboard.js"></script>
+</head>
+<body>
+    <header class="app-header">
+        <div class="header-left">
+            <a href="/dashboard" class="icon-button" aria-label="Back" title="Back to Dashboard">
+                <i data-lucide="arrow-left"></i>
+            </a>
+            <div class="header-title">
+                <h1>Session Panel</h1>
+                <span>Wave <%= typeof waveState !== 'undefined' && waveState && waveState.currentWave ? waveState.currentWave : '1' %></span>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="user-tag">
+                <% if (user.avatar) { %>
+                    <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png" alt="">
+                <% } %>
+                <span><%= user.username %></span>
+            </div>
+            <a href="/auth/logout" class="icon-button logout-button" aria-label="Logout" title="Logout">
+                <i data-lucide="log-out"></i>
+            </a>
+        </div>
+    </header>
+
+    <main class="session-container">
+        <!-- ==================== INACTIVE STATE (START SESSION HERO) ==================== -->
+        <section class="start-session-hero" id="session-inactive-view" <%= waveState.isSessionActive ? 'hidden' : '' %>>
+            <i data-lucide="terminal" style="width: 44px; height: 44px; margin-bottom: 12px; color: var(--text-dim);"></i>
+            <h2>No Active Training Session</h2>
+            <p>Training sessions must be started to monitor live ER:LC players, enforce active session blacklists, and log notes for Wave <%= waveState.currentWave %>.</p>
+            <button class="btn btn-primary" type="button" id="start-session-btn" style="min-height: 44px; padding: 0 28px; font-size: 14px;">
+                <i data-lucide="play"></i>
+                <span>Start Session <%= waveState.activeSessionNumber %></span>
+            </button>
+        </section>
+
+        <!-- ==================== ACTIVE STATE (3-COLUMN WORKSPACE) ==================== -->
+        <section id="session-active-view" <%= waveState.isSessionActive ? '' : 'hidden' %>>
+            <!-- Active Session Header Bar -->
+            <div class="session-active-bar">
+                <div class="session-status-tag">
+                    <span class="pulse-dot"></span>
+                    <strong id="session-title-tag">Wave <%= waveState.currentWave %> — Session <%= waveState.activeSessionNumber %></strong>
+                    <span class="session-timer" id="session-live-timer" data-started="<%= waveState.activeSessionStartedAt || '' %>">00:00:00</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <button class="icon-button" type="button" id="refresh-session-data-btn" title="Refresh Live Data">
+                        <i data-lucide="refresh-cw"></i>
+                    </button>
+                    <button class="btn btn-danger" type="button" id="end-session-btn">
+                        <i data-lucide="square"></i>
+                        <span>End Session</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 3-Column Layout -->
+            <div class="workspace-grid">
+                
+                <!-- COLUMN 1: Staff & ER:LC Roster -->
+                <aside class="panel-box">
+                    <div class="panel-header">
+                        <h3>Connected Staff (<span id="staff-count"><%= activeStaff.length %></span>)</h3>
+                    </div>
+                    <div class="staff-list" id="staff-list-container">
+                        <% activeStaff.forEach(s => { %>
+                            <div class="staff-item">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="pulse-dot" style="width: 6px; height: 6px;"></span>
+                                    <span style="font-size: 13px; font-weight: 600;"><%= s.name %></span>
+                                </div>
+                                <span class="badge badge-active" style="font-size: 10px;">Connected</span>
+                            </div>
+                        <% }) %>
+                    </div>
+
+                    <div class="panel-header" style="margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--border);">
+                        <h3>Live ER:LC Players (<span id="player-count"><%= session?.players?.length || 0 %></span>)</h3>
+                    </div>
+                    <div class="search-box">
+                        <i data-lucide="search"></i>
+                        <input type="search" placeholder="Search in-game players..." id="player-search-input">
+                    </div>
+                    <div class="player-list" id="player-list-container" style="max-height: 380px;">
+                        <!-- Injected by JS -->
+                    </div>
+                </aside>
+
+                <!-- COLUMN 2: Note Input Form with Auto-Complete -->
+                <section class="panel-box">
+                    <div class="panel-header">
+                        <h3>Log Observation Note</h3>
+                    </div>
+
+                    <form id="note-composer-form" autocomplete="off">
+                        <div class="form-field">
+                            <label for="trainee-username-input">Roblox Username</label>
+                            <input type="text" id="trainee-username-input" class="form-input" placeholder="Type or click player..." autocomplete="off" required>
+                            
+                            <!-- Auto-Complete Popover -->
+                            <div class="autocomplete-popover" id="autocomplete-popover" style="display: none;"></div>
+                        </div>
+
+                        <div class="form-field">
+                            <label for="note-outcome-input">Observation Tag</label>
+                            <select id="note-outcome-input" class="form-select">
+                                <option value="positive">Positive</option>
+                                <option value="neutral" selected>Neutral</option>
+                                <option value="negative">Negative</option>
+                            </select>
+                        </div>
+
+                        <div class="form-field">
+                            <label for="note-content-input">Observation Details</label>
+                            <textarea id="note-content-input" class="form-textarea" placeholder="Enter observation details..." required></textarea>
+                        </div>
+
+                        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
+                            <button class="btn btn-secondary" type="button" id="clear-note-btn">Clear</button>
+                            <button class="btn btn-primary" type="submit">
+                                <i data-lucide="plus"></i>
+                                <span>Save Note</span>
+                            </button>
+                        </div>
+                    </form>
+                </section>
+
+                <!-- COLUMN 3: Current Session Live Feed -->
+                <aside class="panel-box">
+                    <div class="panel-header">
+                        <h3>Session Feed (<span id="session-note-count"><%= currentSessionNotes.length %></span>)</h3>
+                    </div>
+                    <div class="note-feed" id="session-note-feed" style="max-height: 560px;">
+                        <% if (!currentSessionNotes.length) { %>
+                            <div class="empty-box" id="empty-feed-msg">No notes logged yet for this session.</div>
+                        <% } else { %>
+                            <% currentSessionNotes.forEach(note => { %>
+                                <div class="note-entry" data-outcome="<%= note.outcome %>" data-note-id="<%= note.id %>">
+                                    <div class="note-entry-top">
+                                        <strong><%= note.traineeUsername %></strong>
+                                        <small><%= new Date(note.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) %></small>
+                                    </div>
+                                    <div class="note-entry-body"><%= note.content %></div>
+                                    <div class="note-entry-footer">
+                                        <span class="badge badge-<%= note.outcome %>"><%= note.outcome %></span>
+                                        <small style="color: var(--text-dim);">Logged by <%= note.staffUsername %></small>
+                                    </div>
+                                </div>
+                            <% }) %>
+                        <% } %>
+                    </div>
+                </aside>
+
+            </div>
+        </section>
+    </main>
+
+    <!-- ==================== KICK FROM SESSION MODAL ==================== -->
+    <div class="modal-backdrop" id="session-kick-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div>
+                    <h3>Kick Player from Session</h3>
+                    <p>Kicks the player in-game, DMs them in Discord, logs a negative note, and auto-re-kicks if they rejoin.</p>
+                </div>
+                <button class="icon-button" type="button" data-close-modal>
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <form id="session-kick-form">
+                <div class="form-field">
+                    <label>Target Player</label>
+                    <input type="text" id="kick-target-username" class="form-input" readonly>
+                </div>
+                <div class="form-field">
+                    <label for="kick-reason-text">Kick Reason (Sent in Discord DM)</label>
+                    <textarea id="kick-reason-text" class="form-textarea" rows="4" placeholder="Explain the reason for removal..." required></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" type="button" data-close-modal>Cancel</button>
+                    <button class="btn btn-danger" type="submit">
+                        <i data-lucide="user-x"></i>
+                        <span>Execute Kick</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-box" id="toast-box"></div>
+
+    <script type="application/json" id="initial-session-data"><%- JSON.stringify({ waveState, session, activeStaff, currentSessionNotes, currentUser: user.username }).replace(/</g, '\\u003c') %></script>
+</body>
+</html>

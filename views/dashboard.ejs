@@ -3,17 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Staff Portal - Dashboard</title>
+    <title>Dashboard - JJC Production</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js" defer></script>
+    <script type="module" src="/js/dashboard.js"></script>
 </head>
 <body>
-    <div class="card">
-        <% if (user.avatar) { %>
-            <img class="avatar" src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png" alt="Avatar">
-        <% } %>
-        <h1>Welcome, <%= user.username %></h1>
-        <p>This portal is currently under active development. Check back soon for management controls.</p>
-        <a href="/auth/logout" class="btn btn-secondary">Logout</a>
-    </div>
+    <header class="app-header">
+        <div class="header-left">
+            <div class="header-title">
+                <h1>JJC Production</h1>
+                <span>Staff Portal</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="user-tag">
+                <% if (user.avatar) { %>
+                    <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png" alt="">
+                <% } %>
+                <span><%= user.username %></span>
+            </div>
+            <a href="/auth/logout" class="icon-button logout-button" aria-label="Logout" title="Logout">
+                <i data-lucide="log-out"></i>
+            </a>
+        </div>
+    </header>
+
+    <main class="home-container">
+        <section class="welcome-card">
+            <% if (user.avatar) { %>
+                <img class="avatar" src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png" alt="">
+            <% } %>
+            <h2>Welcome, <%= user.username %></h2>
+            <p>Select a management module below to proceed.</p>
+
+            <nav class="control-menu" aria-label="Management tools">
+                <button class="menu-trigger" type="button" data-training-trigger aria-expanded="true">
+                    <span style="display: flex; align-items: center; gap: 8px;">
+                        <i data-lucide="graduation-cap"></i>
+                        <span>Training Controls</span>
+                    </span>
+                    <i data-lucide="chevron-down"></i>
+                </button>
+
+                <div class="submenu-list" data-training-submenu>
+                    <a href="/dashboard/waves" class="submenu-item">
+                        <i data-lucide="layers"></i>
+                        <span>Wave Management</span>
+                    </a>
+                    <a href="/dashboard/session" class="submenu-item">
+                        <i data-lucide="terminal"></i>
+                        <span>Session Panel</span>
+                    </a>
+                </div>
+
+                <button class="menu-trigger disabled" type="button" disabled>
+                    <span style="display: flex; align-items: center; gap: 8px;">
+                        <i data-lucide="video" style="color: var(--text-dim);"></i>
+                        <span>Recording Management</span>
+                    </span>
+                    <span class="badge badge-soon">Under Development</span>
+                </button>
+            </nav>
+        </section>
+    </main>
 </body>
 </html>

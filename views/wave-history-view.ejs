@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wave <%= wave.waveNumber %> History - JJC Production</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js" defer></script>
+</head>
+<body>
+    <header class="app-header">
+        <div class="header-left">
+            <a href="/dashboard/waves" class="icon-button" title="Back to Wave Management"><i data-lucide="arrow-left"></i></a>
+            <div class="header-title">
+                <h1>Wave <%= wave.waveNumber %> — Read Only</h1>
+                <span>Completed <%= new Date(wave.completedAt).toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' }) %></span>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="user-tag">
+                <% if (user.avatar) { %><img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png" alt=""><% } %>
+                <span><%= user.username %></span>
+            </div>
+            <a href="/auth/logout" class="icon-button logout-button" title="Logout"><i data-lucide="log-out"></i></a>
+        </div>
+    </header>
+
+    <main style="padding: 24px; max-width: 1400px; margin: 0 auto;">
+
+        <!-- Wave Stats Banner -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px;">
+            <% const stats = [
+                { label: 'Total Candidates', value: wave.traineeCount || (wave.trainees || []).length, color: '#60a5fa' },
+                { label: 'Graduated', value: wave.graduatedCount || (wave.trainees || []).filter(t => t.status === 'passed').length, color: '#34d399' },
+                { label: 'Failed/Kicked', value: wave.failedCount || (wave.trainees || []).filter(t => t.status !== 'passed').length, color: '#f87171' },
+                { label: 'Sessions', value: wave.sessionCount || (wave.sessions || []).length, color: '#d8b4fe' }
+            ]; %>
+            <% stats.forEach(stat => { %>
+                <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center;">
+                    <div style="font-size: 28px; font-weight: 700; color: <%= stat.color %>;"><%= stat.value %></div>
+                    <div style="font-size: 11px; color: var(--text-dim); text-transform: uppercase; font-weight: 700; margin-top: 4px;"><%= stat.label %></div>
+                </div>
+            <% }) %>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 320px 1fr; gap: 20px; align-items: start;">
+
+            <!-- Session History Sidebar -->
+            <aside>
+                <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px;">
+                    <h3 style="font-size: 13px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px;">Sessions (<%= (wave.sessions || []).length %>)</h3>
+                    <% if ((wave.sessions || []).length === 0) { %>
+                        <div class="empty-box" style="padding: 16px;">No session records.</div>
+                    <% } else { %>
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <% (wave.sessions || []).sort((a,b) => a.sessionNumber - b.sessionNumber).forEach(sess => {
+                                const mins = Math.floor(sess.durationSeconds / 60);
+                                const secs = sess.durationSeconds % 60;
+                                const durStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+                            %>
+                                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                        <strong style="font-size: 13px;">Session <%= sess.sessionNumber %></strong>
+                                        <span style="font-size: 11px; font-weight: 700; color: #34d399;"><%= durStr %></span>
+                                    </div>
+                                    <div style="font-size: 11px; color: var(--text-dim);">
+                                        <%= new Date(sess.startedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) %>
+                                    </div>
+                                </div>
+                            <% }) %>
+                        </div>
+                    <% } %>
+                </div>
+            </aside>
+
+            <!-- Trainee Records -->
+            <section>
+                <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px;">
+                    <h3 style="font-size: 13px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 14px;">
+                        Candidates (<%= (wave.trainees || []).length %>)
+                    </h3>
+
+                    <% if (!(wave.trainees || []).length) { %>
+                        <div class="empty-box" style="padding: 24px;">No trainee records for this wave.</div>
+                    <% } else { %>
+                        <div style="display: flex; flex-direction: column; gap: 12px;">
+                            <% (wave.trainees || []).forEach(t => {
+                                const isPass = t.status === 'passed';
+                                const isFail = t.status === 'failed';
+                                const isKicked = t.status === 'kicked';
+                                const allNotes = t.notes || [];
+
+                                // Group by section
+                                const grouped = {};
+                                allNotes.forEach(n => {
+                                    const sec = n.section || (n.source === 'Wave Management' ? 'Wave Management' : `Session ${n.sessionNumber || 1}`);
+                                    if (!grouped[sec]) grouped[sec] = [];
+                                    grouped[sec].push(n);
+                                });
+                            %>
+                                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; <%= isKicked ? 'opacity: 0.5;' : '' %>">
+                                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                                        <div style="display: flex; align-items: center; gap: 10px;">
+                                            <% if (t.avatarUrl) { %>
+                                                <img src="<%= t.avatarUrl %>" style="width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border);" alt="">
+                                            <% } else { %>
+                                                <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--surface-muted); border: 1px solid var(--border); display: grid; place-items: center; font-weight: 700; font-size: 13px;"><%= (t.robloxUsername || 'T')[0].toUpperCase() %></div>
+                                            <% } %>
+                                            <div>
+                                                <strong style="font-size: 14px;"><%= t.robloxUsername %></strong>
+                                                <small style="display: block; font-size: 11px; color: var(--text-muted);"><%= t.discordTag %></small>
+                                            </div>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <% if (isPass) { %>
+                                                <span class="badge badge-pass">Passed</span>
+                                            <% } else if (isFail) { %>
+                                                <span class="badge badge-fail">Failed</span>
+                                            <% } else if (isKicked) { %>
+                                                <span class="badge badge-kicked">Kicked</span>
+                                            <% } else { %>
+                                                <span class="badge badge-neutral"><%= t.status || 'Unknown' %></span>
+                                            <% } %>
+                                            <span style="font-size: 12px; color: var(--text-muted);"><%= allNotes.length %> notes</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Notes grouped by section -->
+                                    <% if (Object.keys(grouped).length) { %>
+                                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                                            <% Object.keys(grouped).sort().forEach(section => { %>
+                                                <div class="session-note-group">
+                                                    <div class="session-note-group-title"><%= section %> (<%= grouped[section].length %>)</div>
+                                                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                                                        <% grouped[section].forEach(note => { %>
+                                                            <div class="note-entry" data-outcome="<%= note.outcome %>">
+                                                                <div class="note-entry-top">
+                                                                    <strong>By <%= note.staffUsername %></strong>
+                                                                    <small><%= new Date(note.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) %></small>
+                                                                </div>
+                                                                <div class="note-entry-body"><%= note.content %></div>
+                                                                <div class="note-entry-footer">
+                                                                    <span class="badge badge-<%= note.outcome %>"><%= note.outcome %></span>
+                                                                </div>
+                                                            </div>
+                                                        <% }) %>
+                                                    </div>
+                                                </div>
+                                            <% }) %>
+                                        </div>
+                                    <% } else { %>
+                                        <div style="font-size: 12px; color: var(--text-dim);">No notes recorded.</div>
+                                    <% } %>
+
+                                    <!-- AI Evaluation if present -->
+                                    <% if (t.evaluation) { %>
+                                        <div style="margin-top: 10px; padding: 10px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: var(--radius-sm);">
+                                            <div style="font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; margin-bottom: 4px;">AI Evaluation</div>
+                                            <div style="font-size: 12px;"><strong>Score:</strong> <%= t.evaluation.score %>/100 &nbsp;|&nbsp; <strong>Decision:</strong> <%= t.evaluation.decision %></div>
+                                            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;"><%= t.evaluation.decisionReason %></div>
+                                        </div>
+                                    <% } %>
+                                </div>
+                            <% }) %>
+                        </div>
+                    <% } %>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script>document.addEventListener('DOMContentLoaded', () => { if (window.lucide) lucide.createIcons(); });</script>
+</body>
+</html>

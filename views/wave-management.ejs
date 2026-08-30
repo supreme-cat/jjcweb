@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wave Management - JJC Production</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js" defer></script>
+    <script type="module" src="/js/dashboard.js"></script>
+</head>
+<body>
+    <header class="app-header">
+        <div class="header-left">
+            <a href="/dashboard" class="icon-button" aria-label="Back" title="Back to Dashboard">
+                <i data-lucide="arrow-left"></i>
+            </a>
+            <div class="header-title">
+                <h1>Wave Management</h1>
+                <span>Wave <%= waveState.currentWave %></span>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="user-tag">
+                <% if (user.avatar) { %>
+                    <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png" alt="">
+                <% } %>
+                <span><%= user.username %></span>
+            </div>
+            <a href="/auth/logout" class="icon-button logout-button" aria-label="Logout" title="Logout">
+                <i data-lucide="log-out"></i>
+            </a>
+        </div>
+    </header>
+
+    <main class="wave-container">
+        <!-- Wave Controls Bar -->
+        <div class="wave-controls-bar">
+            <div style="display: flex; align-items: center; gap: 14px;">
+                <!-- Clickable Wave Counter to view historical waves -->
+                <div class="wave-counter-badge" id="open-history-btn" title="Click to view archived historical waves">
+                    <i data-lucide="archive"></i>
+                    <h2>Wave <%= waveState.currentWave %></h2>
+                    <span class="badge badge-active" style="font-size: 10px;">Ongoing</span>
+                </div>
+                <span style="font-size: 13px; color: var(--text-muted);">
+                    <strong id="active-trainee-count"><%= trainees.filter(t => t.status !== 'kicked').length %></strong> active candidates
+                </span>
+            </div>
+
+            <div class="wave-actions-right">
+                <button class="btn btn-secondary" type="button" id="sync-wave-btn" title="Sync Discord members with TRAINEE_ROLE_ID">
+                    <i data-lucide="refresh-cw"></i>
+                    <span>Sync Discord</span>
+                </button>
+                <button class="btn btn-ai" type="button" id="open-ai-eval-btn">
+                    <i data-lucide="sparkles"></i>
+                    <span>AI Evaluate</span>
+                </button>
+                <button class="btn btn-danger" type="button" id="finish-wave-btn" title="End current wave, archive trainees, and start new wave">
+                    <i data-lucide="flag"></i>
+                    <span>Finish Wave</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Filter & Sort Bar -->
+        <div class="filter-sort-bar">
+            <div class="search-box" style="width: 280px; margin-bottom: 0;">
+                <i data-lucide="search"></i>
+                <input type="search" placeholder="Search by Roblox or Discord..." id="wave-search-input">
+            </div>
+
+            <div class="sort-group">
+                <span style="font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase;">Sort by:</span>
+                <select class="form-select" id="wave-sort-select" style="padding: 6px 12px; width: 150px; font-size: 12px;">
+                    <option value="newest">Newest</option>
+                    <option value="most_notes">Most Notes</option>
+                    <option value="least_notes">Least Notes</option>
+                    <option value="pass">Pass Verdict</option>
+                    <option value="fail">Fail Verdict</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Trainee Grid -->
+        <section class="trainee-grid" id="trainee-grid-container">
+            <% if (!trainees.length) { %>
+                <div class="empty-box" style="grid-column: 1 / -1; padding: 48px;">
+                    No candidates found for Wave <%= waveState.currentWave %>. Click "Sync Discord" to pull members with the trainee role.
+                </div>
+            <% } else { %>
+                <% trainees.forEach(t => { 
+                    const isKicked = t.status === 'kicked';
+                    const notesCount = (t.notes || []).length;
+                    const evalDecision = t.evaluation?.decision || 'PENDING';
+                %>
+                    <div class="trainee-card <%= isKicked ? 'kicked' : '' %>" data-roblox="<%= t.robloxUsername %>" data-discord="<%= t.discordTag %>" data-notes-count="<%= notesCount %>" data-decision="<%= evalDecision %>" data-created="<%= t.addedAt || '' %>">
+                        <div>
+                            <div class="trainee-top">
+                                <div class="avatar-stack">
+                                    <% if (t.avatarUrl) { %>
+                                        <img class="roblox-img" src="<%= t.avatarUrl %>" alt="">
+                                    <% } else { %>
+                                        <div class="roblox-img" style="display: grid; place-items: center; font-weight: 700; font-size: 14px;"><%= (t.robloxUsername || 'T')[0].toUpperCase() %></div>
+                                    <% } %>
+                                    <% if (t.discordAvatar) { %>
+                                        <img class="discord-img" src="<%= t.discordAvatar %>" alt="">
+                                    <% } %>
+                                </div>
+                                <div class="trainee-meta">
+                                    <strong><%= t.robloxUsername %></strong>
+                                    <small><%= t.discordTag %></small>
+                                </div>
+                            </div>
+
+                            <div class="trainee-status-row" style="margin-top: 10px;">
+                                <% if (isKicked) { %>
+                                    <span class="badge badge-kicked">Kicked</span>
+                                <% } else if (t.evaluation) { %>
+                                    <span class="badge badge-<%= t.evaluation.decision.toLowerCase() %>"><%= t.evaluation.decision %> (<%= t.evaluation.score %>/100)</span>
+                                <% } else { %>
+                                    <span class="badge badge-neutral">Active</span>
+                                <% } %>
+                                <span style="font-size: 12px; font-weight: 600; color: var(--text-muted);"><%= notesCount %> notes</span>
+                            </div>
+                        </div>
+
+                        <div class="trainee-actions-row">
+                            <button class="btn btn-secondary" type="button" data-check-notes="<%= t.robloxUsername %>" style="flex: 1; min-height: 32px; font-size: 12px;">
+                                <i data-lucide="file-text"></i>
+                                <span>Check Notes</span>
+                            </button>
+                            <% if (!isKicked) { %>
+                                <button class="btn btn-danger" type="button" data-kick-trainee="<%= t.discordId %>" data-roblox-name="<%= t.robloxUsername %>" style="min-height: 32px; padding: 0 10px;" title="Kick from Discord & Wave">
+                                    <i data-lucide="user-x"></i>
+                                </button>
+                            <% } %>
+                        </div>
+                    </div>
+                <% }) %>
+            <% } %>
+        </section>
+    </main>
+
+    <!-- ==================== CHECK NOTES MODAL (BY SESSION) ==================== -->
+    <div class="modal-backdrop" id="notes-modal">
+        <div class="modal-card wide">
+            <div class="modal-header">
+                <div>
+                    <h3 id="notes-modal-title">Trainee Notes</h3>
+                    <p id="notes-modal-subtitle">Observations recorded across sessions</p>
+                </div>
+                <button class="icon-button" type="button" data-close-modal>
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+
+            <!-- Quick Add Note Form -->
+            <form id="modal-quick-note-form" style="display: flex; gap: 8px; margin-bottom: 14px;">
+                <input type="hidden" id="modal-hidden-username">
+                <select class="form-select" id="modal-outcome-select" style="width: 140px;">
+                    <option value="positive">Positive</option>
+                    <option value="neutral" selected>Neutral</option>
+                    <option value="negative">Negative</option>
+                </select>
+                <input type="text" class="form-input" id="modal-note-text" placeholder="Add observation note..." required style="flex: 1;">
+                <button class="btn btn-primary" type="submit">
+                    <i data-lucide="plus"></i>
+                    <span>Add</span>
+                </button>
+            </form>
+
+            <div id="notes-by-session-container" style="max-height: 440px; overflow-y: auto; padding-right: 4px;">
+                <!-- Injected by JS, separated by Session 1, Session 2, etc. -->
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" type="button" data-close-modal>Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== KICK TRAINEE MODAL ==================== -->
+    <div class="modal-backdrop" id="kick-trainee-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div>
+                    <h3>Kick Trainee from Discord & Wave</h3>
+                    <p>Sequence: 1. Send Discord DM -> 2. Kick from Discord Server -> 3. Mark as kicked.</p>
+                </div>
+                <button class="icon-button" type="button" data-close-modal>
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <form id="kick-trainee-form">
+                <input type="hidden" id="kick-trainee-discord-id">
+                <div class="form-field">
+                    <label>Target Candidate</label>
+                    <input type="text" id="kick-trainee-roblox-name" class="form-input" readonly>
+                </div>
+                <div class="form-field">
+                    <label for="kick-trainee-reason-input">Reason for Removal</label>
+                    <textarea id="kick-trainee-reason-input" class="form-textarea" rows="4" placeholder="Explain the reason for removal..." required></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" type="button" data-close-modal>Cancel</button>
+                    <button class="btn btn-danger" type="submit">
+                        <i data-lucide="user-x"></i>
+                        <span>Confirm Kick</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================== AI EVALUATION & FINALIZATION MODAL ==================== -->
+    <div class="modal-backdrop" id="ai-eval-modal">
+        <div class="modal-card wide">
+            <div class="modal-header">
+                <div>
+                    <h3>Wave Evaluation & Finalization</h3>
+                    <p>Review AI generated assessments, make staff overrides, or finalize the wave.</p>
+                </div>
+                <button class="icon-button" type="button" data-close-modal>
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+
+            <!-- Loading State -->
+            <div id="ai-loading-box" style="display: none; padding: 48px 16px; text-align: center;">
+                <p style="font-size: 16px; font-weight: 700; margin-bottom: 6px;">Evaluating candidate notes with Gemini AI...</p>
+                <small style="color: var(--text-dim);">Analyzing performance logs across all sessions.</small>
+            </div>
+
+            <!-- Results Content -->
+            <div id="ai-results-content" style="display: none;">
+                <div id="ai-results-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 480px; overflow-y: auto; margin-bottom: 16px;">
+                    <!-- Injected by JS with Staff Override inputs -->
+                </div>
+            </div>
+
+            <div class="modal-footer" id="ai-modal-footer">
+                <button class="btn btn-secondary" type="button" data-close-modal>Close</button>
+                <button class="btn btn-primary" type="button" id="finalize-wave-btn">
+                    <i data-lucide="check-check"></i>
+                    <span>Finalize Wave (Send DMs & Roles)</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== HISTORICAL WAVES DRAWER ==================== -->
+    <div class="modal-backdrop" id="history-modal">
+        <div class="modal-card wide">
+            <div class="modal-header">
+                <div>
+                    <h3>Archived Historical Waves</h3>
+                    <p>View past wave records, session counts, durations, and graduate logs.</p>
+                </div>
+                <button class="icon-button" type="button" data-close-modal>
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+
+            <div id="former-waves-list" style="display: flex; flex-direction: column; gap: 12px; max-height: 480px; overflow-y: auto;">
+                <% if (!formerWaves.length) { %>
+                    <div class="empty-box">No archived historical waves yet.</div>
+                <% } else { %>
+                    <% formerWaves.forEach(w => { %>
+                        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <strong>Wave <%= w.waveNumber %> (<%= w.waveName %>)</strong>
+                                <small style="color: var(--text-dim);">Completed: <%= new Date(w.completedAt).toLocaleDateString() %></small>
+                            </div>
+                            <div style="display: flex; gap: 16px; font-size: 13px; color: var(--text-muted);">
+                                <span>Candidates: <strong><%= w.traineeCount %></strong></span>
+                                <span>Sessions: <strong><%= w.sessionCount || (w.sessions || []).length %></strong></span>
+                            </div>
+                        </div>
+                    <% }) %>
+                <% } %>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" type="button" data-close-modal>Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-box" id="toast-box"></div>
+
+    <script type="application/json" id="wave-bootstrap-data"><%- JSON.stringify({ waveState, trainees, formerWaves, kickedTrainees }).replace(/</g, '\\u003c') %></script>
+</body>
+</html>

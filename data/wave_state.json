@@ -1,0 +1,51 @@
+{
+  "currentWave": 3,
+  "isSessionActive": false,
+  "activeSessionNumber": 3,
+  "activeSessionStartedAt": null,
+  "sessionHistory": [
+    {
+      "waveNumber": 1,
+      "sessionNumber": 1,
+      "startedAt": "2026-08-30T08:39:31.021Z",
+      "endedAt": "2026-08-30T08:41:22.749Z",
+      "durationSeconds": 112
+    },
+    {
+      "waveNumber": 1,
+      "sessionNumber": 2,
+      "startedAt": "2026-08-30T08:50:35.975Z",
+      "endedAt": "2026-08-30T08:51:11.482Z",
+      "durationSeconds": 36
+    },
+    {
+      "waveNumber": 1,
+      "sessionNumber": 3,
+      "startedAt": "2026-08-30T08:51:27.542Z",
+      "endedAt": "2026-08-30T09:02:59.123Z",
+      "durationSeconds": 692
+    },
+    {
+      "waveNumber": 1,
+      "sessionNumber": 4,
+      "startedAt": "2026-08-30T09:03:01.072Z",
+      "endedAt": "2026-08-30T09:05:52.176Z",
+      "durationSeconds": 171
+    },
+    {
+      "waveNumber": 3,
+      "sessionNumber": 1,
+      "startedAt": "2026-08-30T09:27:03.160Z",
+      "endedAt": "2026-08-30T09:29:24.409Z",
+      "durationSeconds": 141
+    },
+    {
+      "waveNumber": 3,
+      "sessionNumber": 2,
+      "startedAt": "2026-08-30T09:30:28.644Z",
+      "endedAt": "2026-08-30T10:01:35.730Z",
+      "durationSeconds": 1867
+    }
+  ],
+  "sessionBlacklist": []
+}

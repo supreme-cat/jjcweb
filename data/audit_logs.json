@@ -1,0 +1,20 @@
+[
+  {
+    "id": "290799e0-205d-4723-9d8f-c7f3c06faf23",
+    "action": "Kicked Trainee from Wave: hhhhhk88",
+    "category": "kick",
+    "details": "Reason: asdasdasd | Discord: 1538526788387479587",
+    "staffUsername": "supreme.cat",
+    "staffId": "820258961692819456",
+    "timestamp": "2026-08-30T10:01:56.172Z"
+  },
+  {
+    "id": "7d0aa767-30ec-4450-9bd7-42c49fb937ca",
+    "action": "Ended Session 2",
+    "category": "session",
+    "details": "Wave 3 — Session 2 concluded. Duration: 1867s.",
+    "staffUsername": "Staff",
+    "staffId": null,
+    "timestamp": "2026-08-30T10:01:35.734Z"
+  }
+]
