@@ -51,7 +51,7 @@ async function fetchWaveMembers() {
         const members = await guild.members.fetch();
         const trainees = [];
 
-        members.forEach((member) => {
+        guild.members.cache.forEach((member) => {
             if (member.roles.cache.has(roleId) && !member.user.bot) {
                 trainees.push({
                     discordId: member.id,
