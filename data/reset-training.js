@@ -4,23 +4,23 @@ const path = require('path');
 // Define all files related strictly to Training Controls and their default initial state
 const resetTargets = [
     {
-        filePath: path.join(__dirname, 'data', 'current_trainees.json'),
+        filePath: path.join(__dirname, 'current_trainees.json'),
         defaultData: []
     },
     {
-        filePath: path.join(__dirname, 'data', 'former_trainees.json'),
+        filePath: path.join(__dirname, 'former_trainees.json'),
         defaultData: []
     },
     {
-        filePath: path.join(__dirname, 'data', 'kicked_trainees.json'),
+        filePath: path.join(__dirname, 'kicked_trainees.json'),
         defaultData: []
     },
     {
-        filePath: path.join(__dirname, 'data', 'wave_state.json'),
+        filePath: path.join(__dirname, 'wave_state.json'),
         defaultData: { currentWave: 1, history: [] }
     },
     {
-        filePath: path.join(__dirname, 'data', 'session_data.json'),
+        filePath: path.join(__dirname, 'session_data.json'),
         defaultData: { activeSession: null, notes: [] }
     }
 ];
