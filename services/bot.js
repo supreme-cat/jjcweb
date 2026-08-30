@@ -48,7 +48,6 @@ async function fetchWaveMembers() {
         const guild = await client.guilds.fetch(guildId);
         if (!guild) return [];
 
-        const members = await guild.members.fetch();
         const trainees = [];
 
         guild.members.cache.forEach((member) => {
