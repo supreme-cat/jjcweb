@@ -7,7 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "reset-training": "node reset-training.js"
+    "reset-training": "node data/reset-training.js"
   },
   "keywords": [],
   "author": "",
