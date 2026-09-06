@@ -45,29 +45,14 @@ async function fetchWaveMembers() {
     }
 
     try {
-        let guild = client.guilds.cache.get(guildId);
-        if (!guild) {
-            guild = await client.guilds.fetch(guildId).catch(() => null);
-        }
-        if (!guild) {
-            console.warn('[BOT] Guild could not be fetched:', guildId);
-            return [];
-        }
+        const guild = await client.guilds.fetch(guildId);
+        if (!guild) return [];
 
-        let members;
-        try {
-            members = await guild.members.fetch();
-        } catch (fetchErr) {
-            console.warn('[BOT] guild.members.fetch failed, using cache:', fetchErr.message);
-            members = guild.members.cache;
-        }
-
-        const traineeRoleIds = (roleId || '').split(',').map((r) => r.trim()).filter(Boolean);
+        const members = await guild.members.fetch();
         const trainees = [];
 
         members.forEach((member) => {
-            const hasRole = traineeRoleIds.some((rId) => member.roles.cache.has(rId));
-            if (hasRole && !member.user.bot) {
+            if (member.roles.cache.has(roleId) && !member.user.bot) {
                 trainees.push({
                     discordId: member.id,
                     discordTag: member.user.username,
