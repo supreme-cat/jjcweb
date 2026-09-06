@@ -15,7 +15,7 @@ async function logEvent(guild, { title, description, color }) {
     if (!logChannelId) return;
 
     try {
-        const targetGuild = guild || (process.env.DISCORD_GUILD_ID ? await client.guilds.fetch(process.env.DISCORD_GUILD_ID).catch(() => null) : null);
+        const targetGuild = guild || (process.env.DISCORD_GUILD_ID ? (client.guilds.cache.get(process.env.DISCORD_GUILD_ID) || await client.guilds.fetch(process.env.DISCORD_GUILD_ID).catch(() => null)) : null);
         if (!targetGuild) return;
 
         const channel = await targetGuild.channels.fetch(logChannelId).catch(() => null);
@@ -45,14 +45,29 @@ async function fetchWaveMembers() {
     }
 
     try {
-        const guild = await client.guilds.fetch(guildId);
-        if (!guild) return [];
+        let guild = client.guilds.cache.get(guildId);
+        if (!guild) {
+            guild = await client.guilds.fetch(guildId).catch(() => null);
+        }
+        if (!guild) {
+            console.warn('[BOT] Guild could not be fetched:', guildId);
+            return [];
+        }
 
-        const members = await guild.members.fetch();
+        let members;
+        try {
+            members = await guild.members.fetch();
+        } catch (fetchErr) {
+            console.warn('[BOT] guild.members.fetch failed, using cache:', fetchErr.message);
+            members = guild.members.cache;
+        }
+
+        const traineeRoleIds = (roleId || '').split(',').map((r) => r.trim()).filter(Boolean);
         const trainees = [];
 
         members.forEach((member) => {
-            if (member.roles.cache.has(roleId) && !member.user.bot) {
+            const hasRole = traineeRoleIds.some((rId) => member.roles.cache.has(rId));
+            if (hasRole && !member.user.bot) {
                 trainees.push({
                     discordId: member.id,
                     discordTag: member.user.username,
@@ -62,6 +77,7 @@ async function fetchWaveMembers() {
             }
         });
 
+        console.log(`[BOT] Fetched ${trainees.length} wave trainees matching role(s): ${traineeRoleIds.join(', ')}`);
         return trainees;
     } catch (err) {
         console.error('[BOT] Error fetching wave members:', err.message);
@@ -110,7 +126,7 @@ async function executeDiscordTraineeKick({ discordId, robloxUsername, robloxId, 
         dmError = err.message;
     }
 
-    const guild = await client.guilds.fetch(guildId).catch(() => null);
+    const guild = client.guilds.cache.get(guildId) || await client.guilds.fetch(guildId).catch(() => null);
     if (guild) {
         if (!dmDelivered) {
             await logEvent(guild, {
@@ -182,15 +198,20 @@ async function executeTraineePass({ discordId, robloxUsername, robloxId, decisio
 
     // Role assignment
     if (guildId) {
-        const guild = await client.guilds.fetch(guildId).catch(() => null);
+        const guild = client.guilds.cache.get(guildId) || await client.guilds.fetch(guildId).catch(() => null);
         if (guild) {
             const member = await guild.members.fetch(discordId).catch(() => null);
             if (member) {
                 if (requiredRoleId) {
                     await member.roles.add(requiredRoleId).catch(() => {});
                 }
-                if (traineeRoleId && member.roles.cache.has(traineeRoleId)) {
-                    await member.roles.remove(traineeRoleId).catch(() => {});
+                if (traineeRoleId) {
+                    const traineeRoleIds = traineeRoleId.split(',').map(r => r.trim());
+                    for (const rId of traineeRoleIds) {
+                        if (member.roles.cache.has(rId)) {
+                            await member.roles.remove(rId).catch(() => {});
+                        }
+                    }
                 }
             }
 
@@ -226,21 +247,32 @@ async function executeTraineeFail({ discordId, robloxUsername, robloxId, decisio
 }
 
 /**
- * Send in-game session kick notification to Discord user
+ * Send in-game session kick notification to Discord user.
+ * Uses robust reverse lookup: cache -> current_trainees.json -> noblox -> RoVer
  */
 async function sendSessionKickDM({ robloxUsername, robloxId, reason, staffUsername }) {
     const userLookup = await roverService.getDiscordIdFromRoblox(robloxId, robloxUsername);
+
     if (!userLookup || !userLookup.discordId) {
-        return { delivered: false, error: 'User not verified with RoVer; could not send Discord DM.' };
+        console.warn(`[BOT] Could not resolve Discord ID for ${robloxUsername}. Logging to channel.`);
+        await logEvent(null, {
+            title: '⚠️ Session Kick DM — User Not Resolved',
+            description: `Could not find Discord account for Roblox user **${robloxUsername}**.\n**Intended Reason:** ${reason}\nPlayer was still kicked from ER:LC.`,
+            color: 0xf39c12
+        });
+        return { delivered: false, error: `No Discord ID found for "${robloxUsername}".` };
     }
 
+    let delivered = false;
+    let dmError = null;
+
     try {
-        const user = await client.users.fetch(userLookup.discordId);
-        if (!user) return { delivered: false, error: 'Discord user not found.' };
+        const user = await client.users.fetch(userLookup.discordId).catch(() => null);
+        if (!user) throw new Error('Discord user object could not be fetched.');
 
         const embed = new EmbedBuilder()
             .setTitle('🚨 JJC Production — Session Notice')
-            .setDescription(`You have been removed from the active ER:LC training session.`)
+            .setDescription('You have been removed from the active ER:LC training session.')
             .addFields(
                 { name: 'Roblox Account', value: `\`${robloxUsername}\``, inline: true },
                 { name: 'Staff Moderator', value: `\`${staffUsername || 'Staff Team'}\``, inline: true },
@@ -251,10 +283,23 @@ async function sendSessionKickDM({ robloxUsername, robloxId, reason, staffUserna
             .setTimestamp();
 
         await user.send({ embeds: [embed] });
-        return { delivered: true, discordId: userLookup.discordId };
+        delivered = true;
+
+        await logEvent(null, {
+            title: '🔇 Session Kick DM Sent',
+            description: `**Player:** \`${robloxUsername}\`\n**Discord:** <@${userLookup.discordId}>\n**Staff:** \`${staffUsername || 'Staff'}\`\n**Reason:** ${reason}`,
+            color: 0xe74c3c
+        });
     } catch (err) {
-        return { delivered: false, error: `Could not send DM: ${err.message}` };
+        dmError = err.message;
+        await logEvent(null, {
+            title: '⚠️ Session Kick DM Failed (DMs Closed)',
+            description: `Could not DM **${robloxUsername}** (<@${userLookup.discordId}>).\n**Error:** ${err.message}\n**Reason:** ${reason}`,
+            color: 0xf39c12
+        });
     }
+
+    return { delivered, discordId: userLookup.discordId, error: dmError };
 }
 
 // ==================== EXISTING GROUP ACCEPTANCE LOGIC (PRESERVED) ====================

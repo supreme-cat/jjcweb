@@ -52,6 +52,10 @@ html, body {
   min-height: 100vh;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 button, input, textarea, select {
   font: inherit;
   color: inherit;

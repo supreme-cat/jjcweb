@@ -19,7 +19,7 @@
             </a>
             <div class="header-title">
                 <h1>Session Panel</h1>
-                <span>Wave <%= typeof waveState !== 'undefined' && waveState && waveState.currentWave ? waveState.currentWave : '1' %></span>
+                <span>Wave <span id="start-wave-label"><%= typeof waveState !== 'undefined' && waveState && waveState.currentWave ? waveState.currentWave : '1' %></span></span>
             </div>
         </div>
         <div class="header-right">
@@ -37,18 +37,18 @@
 
     <main class="session-container">
         <!-- ==================== INACTIVE STATE (START SESSION HERO) ==================== -->
-        <section class="start-session-hero" id="session-inactive-view" <%= waveState.isSessionActive ? 'hidden' : '' %>>
+        <section class="start-session-hero" id="session-inactive-view" style="<%= waveState.isSessionActive ? 'display: none !important;' : 'display: flex;' %>">
             <i data-lucide="terminal" style="width: 44px; height: 44px; margin-bottom: 12px; color: var(--text-dim);"></i>
             <h2>No Active Training Session</h2>
             <p>Training sessions must be started to monitor live ER:LC players, enforce active session blacklists, and log notes for Wave <%= waveState.currentWave %>.</p>
             <button class="btn btn-primary" type="button" id="start-session-btn" style="min-height: 44px; padding: 0 28px; font-size: 14px;">
                 <i data-lucide="play"></i>
-                <span>Start Session <%= waveState.activeSessionNumber %></span>
+                <span>Start Session <span id="start-session-label"><%= waveState.activeSessionNumber %></span></span>
             </button>
         </section>
 
         <!-- ==================== ACTIVE STATE (3-COLUMN WORKSPACE) ==================== -->
-        <section id="session-active-view" <%= waveState.isSessionActive ? '' : 'hidden' %>>
+        <section id="session-active-view" style="<%= waveState.isSessionActive ? 'display: block;' : 'display: none !important;' %>">
             <!-- Active Session Header Bar -->
             <div class="session-active-bar">
                 <div class="session-status-tag">
@@ -184,6 +184,7 @@
                 <div class="form-field">
                     <label>Target Player</label>
                     <input type="text" id="kick-target-username" class="form-input" readonly>
+                    <input type="hidden" id="kick-target-roblox-id">
                 </div>
                 <div class="form-field">
                     <label for="kick-reason-text">Kick Reason (Sent in Discord DM)</label>

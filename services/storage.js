@@ -8,6 +8,7 @@ const CURRENT_TRAINEES_FILE = path.join(DATA_DIR, 'current_trainees.json');
 const FORMER_TRAINEES_FILE = path.join(DATA_DIR, 'former_trainees.json');
 const KICKED_TRAINEES_FILE = path.join(DATA_DIR, 'kicked_trainees.json');
 const STAFF_FILE = path.join(DATA_DIR, 'staff.json');
+const AUDIT_LOGS_FILE = path.join(DATA_DIR, 'audit_logs.json');
 
 function ensureDataDir() {
     if (!fs.existsSync(DATA_DIR)) {
@@ -41,6 +42,29 @@ function writeJsonSafe(filePath, data) {
     }
 }
 
+// ==================== AUDIT LOGGING ====================
+
+function getAuditLogs() {
+    const logs = readJsonSafe(AUDIT_LOGS_FILE, []);
+    return Array.isArray(logs) ? logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)) : [];
+}
+
+function logAuditAction({ action, category, details, staffUsername, staffId }) {
+    const logs = getAuditLogs();
+    const entry = {
+        id: crypto.randomUUID(),
+        action: action || 'General Action',
+        category: category || 'system',
+        details: details || '',
+        staffUsername: staffUsername || 'Staff',
+        staffId: staffId || null,
+        timestamp: new Date().toISOString()
+    };
+    logs.unshift(entry);
+    writeJsonSafe(AUDIT_LOGS_FILE, logs);
+    return entry;
+}
+
 // ==================== WAVE & SESSION STATE ====================
 
 function getWaveState() {
@@ -49,8 +73,8 @@ function getWaveState() {
         isSessionActive: false,
         activeSessionNumber: 1,
         activeSessionStartedAt: null,
-        sessionHistory: [], // [{ waveNumber: 1, sessionNumber: 1, startedAt: '...', endedAt: '...', durationSeconds: 1200 }]
-        sessionBlacklist: [] // usernames/ids to auto re-kick during active session
+        sessionHistory: [],
+        sessionBlacklist: []
     };
     return readJsonSafe(WAVE_STATE_FILE, defaultState);
 }
@@ -62,21 +86,31 @@ function updateWaveState(patch = {}) {
     return updated;
 }
 
-function startSession() {
+function startSession(staffUsername = 'Staff', staffId = null) {
     const state = getWaveState();
     if (state.isSessionActive) return state;
 
+    const startedAt = new Date().toISOString();
     const updated = updateWaveState({
         isSessionActive: true,
-        activeSessionStartedAt: new Date().toISOString(),
+        activeSessionStartedAt: startedAt,
         sessionBlacklist: []
     });
+
+    logAuditAction({
+        action: `Started Session ${state.activeSessionNumber}`,
+        category: 'session',
+        details: `Wave ${state.currentWave} — Session ${state.activeSessionNumber} started.`,
+        staffUsername,
+        staffId
+    });
+
     return updated;
 }
 
-function endSession() {
+function endSession(staffUsername = 'Staff', staffId = null) {
     const state = getWaveState();
-    if (!state.isSessionActive) return state;
+    if (!state.isSessionActive) return { updated: state, sessionRecord: null };
 
     const endedAt = new Date().toISOString();
     const startedAt = state.activeSessionStartedAt || endedAt;
@@ -101,6 +135,14 @@ function endSession() {
         sessionBlacklist: []
     });
 
+    logAuditAction({
+        action: `Ended Session ${sessionRecord.sessionNumber}`,
+        category: 'session',
+        details: `Wave ${sessionRecord.waveNumber} — Session ${sessionRecord.sessionNumber} concluded. Duration: ${durationSeconds}s.`,
+        staffUsername,
+        staffId
+    });
+
     return { updated, sessionRecord };
 }
 
@@ -123,7 +165,7 @@ function isSessionBlacklisted(username) {
     return list.includes(username.toLowerCase().trim());
 }
 
-// ==================== STAFF DATABASE ====================
+// ==================== STAFF DATABASE & ANALYTICS ====================
 
 function getAllStaff() {
     return readJsonSafe(STAFF_FILE, []);
@@ -150,6 +192,39 @@ function isStaffRobloxUsername(username) {
     return staffList.some((s) => (s.robloxUsername || '').toLowerCase().trim() === clean);
 }
 
+function getStaffAnalytics() {
+    const staffList = getAllStaff();
+    const auditLogs = getAuditLogs();
+    const allNotes = getAllCurrentNotes();
+    const formerWaves = getFormerWaves();
+
+    formerWaves.forEach((w) => {
+        (w.trainees || []).forEach((t) => {
+            if (Array.isArray(t.notes)) allNotes.push(...t.notes);
+        });
+    });
+
+    return staffList.map((s) => {
+        const staffName = s.discordTag;
+        const staffId = s.discordId;
+
+        const notesCount = allNotes.filter((n) => n.staffId === staffId || (n.staffUsername && n.staffUsername.toLowerCase() === staffName.toLowerCase())).length;
+        const kicksCount = auditLogs.filter((l) => l.category === 'kick' && (l.staffId === staffId || l.staffUsername === staffName)).length;
+        const sessionsCount = auditLogs.filter((l) => l.category === 'session' && l.action.startsWith('Started') && (l.staffId === staffId || l.staffUsername === staffName)).length;
+        const overridesCount = auditLogs.filter((l) => l.category === 'override' && (l.staffId === staffId || l.staffUsername === staffName)).length;
+        const recentActions = auditLogs.filter((l) => l.staffId === staffId || l.staffUsername === staffName).slice(0, 10);
+
+        return {
+            ...s,
+            notesCount,
+            kicksCount,
+            sessionsCount,
+            overridesCount,
+            recentActions
+        };
+    });
+}
+
 // ==================== CURRENT TRAINEES ====================
 
 function getCurrentTrainees() {
@@ -161,21 +236,31 @@ function saveCurrentTrainees(trainees) {
     return trainees;
 }
 
+/**
+ * Syncs Discord members into current_trainees.json, matching by discordId OR robloxUsername to preserve notes.
+ */
 function syncCurrentTrainees(discordMembers = []) {
     const existingTrainees = getCurrentTrainees();
     const merged = [];
 
     discordMembers.forEach((member) => {
-        const existing = existingTrainees.find((t) => t.discordId === member.discordId);
+        const existing = existingTrainees.find((t) => 
+            t.discordId === member.discordId ||
+            (member.robloxUsername && (t.robloxUsername || '').toLowerCase() === member.robloxUsername.toLowerCase()) ||
+            (member.discordTag && (t.discordTag || '').toLowerCase() === member.discordTag.toLowerCase())
+        );
+
         if (existing) {
             merged.push({
                 ...existing,
-                discordTag: member.discordTag,
+                discordId: member.discordId || existing.discordId,
+                discordTag: member.discordTag || existing.discordTag,
                 discordAvatar: member.discordAvatar || existing.discordAvatar,
                 robloxUsername: member.robloxUsername || existing.robloxUsername,
                 robloxId: member.robloxId || existing.robloxId,
                 avatarUrl: member.avatarUrl || existing.avatarUrl,
-                isVerified: member.isVerified !== undefined ? member.isVerified : existing.isVerified
+                isVerified: member.isVerified !== undefined ? member.isVerified : existing.isVerified,
+                notes: existing.notes || []
             });
         } else {
             merged.push({
@@ -186,7 +271,7 @@ function syncCurrentTrainees(discordMembers = []) {
                 robloxId: member.robloxId || null,
                 avatarUrl: member.avatarUrl || null,
                 isVerified: Boolean(member.isVerified),
-                status: 'active', // active, kicked, passed, failed
+                status: 'active',
                 notes: [],
                 evaluation: null,
                 overrides: [],
@@ -195,25 +280,38 @@ function syncCurrentTrainees(discordMembers = []) {
         }
     });
 
+    // Retain any existing trainee who was created via note logger but not yet synced
+    existingTrainees.forEach((existing) => {
+        if (!merged.some((m) => m.discordId === existing.discordId || (m.robloxUsername || '').toLowerCase() === (existing.robloxUsername || '').toLowerCase())) {
+            merged.push(existing);
+        }
+    });
+
     saveCurrentTrainees(merged);
     return merged;
 }
 
-function addTraineeNote(robloxUsername, { staffUsername, staffAvatar, staffId, content, outcome = 'neutral', sessionNumber }) {
+function addTraineeNote(robloxUsername, { staffUsername, staffAvatar, staffId, content, outcome = 'neutral', source = 'session' }) {
     if (!robloxUsername || !content) return null;
 
     const trainees = getCurrentTrainees();
     const norm = robloxUsername.toLowerCase().trim();
-    let trainee = trainees.find((t) => (t.robloxUsername || '').toLowerCase().trim() === norm);
+    let trainee = trainees.find((t) => 
+        (t.robloxUsername || '').toLowerCase().trim() === norm ||
+        (t.discordTag || '').toLowerCase().trim() === norm
+    );
 
     const waveState = getWaveState();
-    const activeSession = sessionNumber || (waveState.isSessionActive ? waveState.activeSessionNumber : 1);
+    const isWaveManagement = source === 'wave_management';
+    const activeSession = isWaveManagement ? null : (waveState.isSessionActive ? waveState.activeSessionNumber : 1);
     const validOutcome = ['positive', 'neutral', 'negative'].includes(outcome) ? outcome : 'neutral';
 
     const newNote = {
         id: crypto.randomUUID(),
-        sessionNumber: Number(activeSession),
+        section: isWaveManagement ? 'Wave Management Notes' : `Session ${activeSession}`,
+        sessionNumber: activeSession,
         waveNumber: waveState.currentWave,
+        source: isWaveManagement ? 'Wave Management' : 'Session Panel',
         staffUsername: staffUsername || 'Staff',
         staffAvatar: staffAvatar || null,
         staffId: staffId || null,
@@ -227,7 +325,6 @@ function addTraineeNote(robloxUsername, { staffUsername, staffAvatar, staffId, c
         if (!Array.isArray(trainee.notes)) trainee.notes = [];
         trainee.notes.unshift(newNote);
     } else {
-        // If note was entered for an unlisted player, create a placeholder candidate
         trainee = {
             discordId: null,
             discordTag: robloxUsername.trim(),
@@ -246,6 +343,15 @@ function addTraineeNote(robloxUsername, { staffUsername, staffAvatar, staffId, c
     }
 
     saveCurrentTrainees(trainees);
+
+    logAuditAction({
+        action: `Logged Note on ${robloxUsername}`,
+        category: 'note',
+        details: `[${validOutcome.toUpperCase()}] ${isWaveManagement ? 'Wave Management Note' : `Session ${activeSession}`}: "${content.slice(0, 60)}${content.length > 60 ? '...' : ''}"`,
+        staffUsername,
+        staffId
+    });
+
     return newNote;
 }
 
@@ -267,20 +373,30 @@ function getCurrentNotesForActiveSession() {
     return all.filter((n) => n.waveNumber === state.currentWave && n.sessionNumber === state.activeSessionNumber);
 }
 
-function deleteTraineeNote(noteId) {
+function deleteTraineeNote(noteId, staffUsername = 'Staff', staffId = null) {
     const trainees = getCurrentTrainees();
-    let found = false;
+    let deletedNote = null;
 
     trainees.forEach((t) => {
         if (Array.isArray(t.notes)) {
-            const before = t.notes.length;
+            const found = t.notes.find((n) => n.id === noteId);
+            if (found) deletedNote = found;
             t.notes = t.notes.filter((n) => n.id !== noteId);
-            if (t.notes.length !== before) found = true;
         }
     });
 
-    if (found) saveCurrentTrainees(trainees);
-    return found;
+    if (deletedNote) {
+        saveCurrentTrainees(trainees);
+        logAuditAction({
+            action: `Deleted Note on ${deletedNote.traineeUsername}`,
+            category: 'note',
+            details: `Removed observation note: "${deletedNote.content.slice(0, 60)}"`,
+            staffUsername,
+            staffId
+        });
+        return true;
+    }
+    return false;
 }
 
 // ==================== KICKED TRAINEES ====================
@@ -305,7 +421,6 @@ function recordKickedTrainee({ discordId, discordTag, robloxUsername, robloxId, 
     kicked.unshift(record);
     writeJsonSafe(KICKED_TRAINEES_FILE, kicked);
 
-    // Update status in current trainees list
     const current = getCurrentTrainees();
     const target = current.find((t) => t.discordId === discordId || (robloxUsername && (t.robloxUsername || '').toLowerCase() === robloxUsername.toLowerCase()));
     if (target) {
@@ -314,21 +429,33 @@ function recordKickedTrainee({ discordId, discordTag, robloxUsername, robloxId, 
         saveCurrentTrainees(current);
     }
 
+    logAuditAction({
+        action: `Kicked Trainee from Wave: ${robloxUsername || discordTag}`,
+        category: 'kick',
+        details: `Reason: ${reason} | Discord: ${discordId}`,
+        staffUsername,
+        staffId
+    });
+
     return record;
 }
 
-// ==================== WAVE ARCHIVING & HISTORICAL WAVES ====================
+// ==================== HISTORICAL WAVES ====================
 
 function getFormerWaves() {
     return readJsonSafe(FORMER_TRAINEES_FILE, []);
 }
 
-function finishWaveAndStartNew() {
+function getFormerWaveByNumber(waveNumber) {
+    const former = getFormerWaves();
+    return former.find((w) => Number(w.waveNumber) === Number(waveNumber)) || null;
+}
+
+function finishWaveAndStartNew(staffUsername = 'Staff', staffId = null) {
     const state = getWaveState();
     const currentTrainees = getCurrentTrainees();
     const formerWaves = getFormerWaves();
 
-    // Calculate sessions for current wave
     const waveSessions = (state.sessionHistory || []).filter((s) => s.waveNumber === state.currentWave);
 
     const archivedWaveRecord = {
@@ -336,6 +463,8 @@ function finishWaveAndStartNew() {
         waveName: `Wave ${state.currentWave}`,
         completedAt: new Date().toISOString(),
         traineeCount: currentTrainees.length,
+        graduatedCount: currentTrainees.filter((t) => t.status === 'passed').length,
+        failedCount: currentTrainees.filter((t) => t.status === 'failed' || t.status === 'kicked').length,
         trainees: currentTrainees,
         sessions: waveSessions,
         sessionCount: waveSessions.length
@@ -344,10 +473,9 @@ function finishWaveAndStartNew() {
     formerWaves.unshift(archivedWaveRecord);
     writeJsonSafe(FORMER_TRAINEES_FILE, formerWaves);
 
-    // Reset current trainees
+    // Clear current trainees
     writeJsonSafe(CURRENT_TRAINEES_FILE, []);
 
-    // Increment wave and reset session counter
     const nextWave = state.currentWave + 1;
     const updatedState = updateWaveState({
         currentWave: nextWave,
@@ -355,6 +483,14 @@ function finishWaveAndStartNew() {
         activeSessionNumber: 1,
         activeSessionStartedAt: null,
         sessionBlacklist: []
+    });
+
+    logAuditAction({
+        action: `Finished Wave ${state.currentWave}`,
+        category: 'wave',
+        details: `Archived Wave ${state.currentWave} (${archivedWaveRecord.traineeCount} candidates, ${archivedWaveRecord.sessionCount} sessions). Initialized Wave ${nextWave}.`,
+        staffUsername,
+        staffId
     });
 
     return {
@@ -386,7 +522,7 @@ function saveStaffOverride(robloxUsername, { newDecision, newReason, staffUserna
     const trainee = trainees.find((t) => (t.robloxUsername || '').toLowerCase().trim() === norm);
     if (!trainee) return null;
 
-    const originalDecision = trainee.evaluation?.decision || 'FAIL';
+    const originalDecision = trainee.evaluation?.decision || 'PENDING';
     const originalReason = trainee.evaluation?.decisionReason || 'N/A';
 
     const overrideRecord = {
@@ -412,16 +548,28 @@ function saveStaffOverride(robloxUsername, { newDecision, newReason, staffUserna
             score: newDecision === 'PASS' ? 80 : 40,
             decisionReason: newReason,
             traineeFeedback: newReason,
-            summary: 'Staff manual evaluation.',
+            summary: 'Staff manual override.',
             evaluatedAt: new Date().toISOString()
         };
     }
 
     saveCurrentTrainees(trainees);
+
+    logAuditAction({
+        action: `Staff Override on ${robloxUsername}: ${originalDecision} -> ${newDecision}`,
+        category: 'override',
+        details: `Reason: ${newReason}`,
+        staffUsername,
+        staffId
+    });
+
     return { trainee, override: overrideRecord };
 }
 
 module.exports = {
+    // Audit logs
+    getAuditLogs,
+    logAuditAction,
     // Wave & Session state
     getWaveState,
     updateWaveState,
@@ -429,10 +577,11 @@ module.exports = {
     endSession,
     addSessionBlacklist,
     isSessionBlacklisted,
-    // Staff
+    // Staff & Analytics
     getAllStaff,
     registerStaff,
     isStaffRobloxUsername,
+    getStaffAnalytics,
     // Current Trainees & Notes
     getCurrentTrainees,
     saveCurrentTrainees,
@@ -444,8 +593,9 @@ module.exports = {
     // Kicked Trainees
     getKickedTrainees,
     recordKickedTrainee,
-    // Waves Archive
+    // Waves Archive & History
     getFormerWaves,
+    getFormerWaveByNumber,
     finishWaveAndStartNew,
     // AI Evaluations & Staff Overrides
     saveTraineeEvaluation,
