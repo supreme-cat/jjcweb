@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js" defer></script>
-    <script type="module" src="/js/dashboard.js"></script>
+    <script src="/js/dashboard.js" defer></script>
 </head>
 <body>
     <header class="app-header">
@@ -19,15 +19,15 @@
             </a>
             <div class="header-title">
                 <h1>Session Panel</h1>
-                <span>Wave <span id="start-wave-label"><%= typeof waveState !== 'undefined' && waveState && waveState.currentWave ? waveState.currentWave : '1' %></span></span>
+                <span>Wave <span id="start-wave-label"><%= (typeof waveState !== 'undefined' && waveState && waveState.currentWave) ? waveState.currentWave : '1' %></span></span>
             </div>
         </div>
         <div class="header-right">
             <div class="user-tag">
-                <% if (user.avatar) { %>
+                <% if (user && user.avatar) { %>
                     <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png" alt="">
                 <% } %>
-                <span><%= user.username %></span>
+                <span><%= (user && user.username) ? user.username : 'Staff' %></span>
             </div>
             <a href="/auth/logout" class="icon-button logout-button" aria-label="Logout" title="Logout">
                 <i data-lucide="log-out"></i>
@@ -37,24 +37,24 @@
 
     <main class="session-container">
         <!-- ==================== INACTIVE STATE (START SESSION HERO) ==================== -->
-        <section class="start-session-hero" id="session-inactive-view" style="<%= waveState.isSessionActive ? 'display: none !important;' : 'display: flex;' %>">
+        <section class="start-session-hero" id="session-inactive-view" style="<%= (waveState && waveState.isSessionActive) ? 'display: none !important;' : 'display: flex;' %>">
             <i data-lucide="terminal" style="width: 44px; height: 44px; margin-bottom: 12px; color: var(--text-dim);"></i>
             <h2>No Active Training Session</h2>
-            <p>Training sessions must be started to monitor live ER:LC players, enforce active session blacklists, and log notes for Wave <%= waveState.currentWave %>.</p>
+            <p>Training sessions must be started to monitor live ER:LC players, enforce active session blacklists, and log notes for Wave <%= (waveState && waveState.currentWave) ? waveState.currentWave : '1' %>.</p>
             <button class="btn btn-primary" type="button" id="start-session-btn" style="min-height: 44px; padding: 0 28px; font-size: 14px;">
                 <i data-lucide="play"></i>
-                <span>Start Session <span id="start-session-label"><%= waveState.activeSessionNumber %></span></span>
+                <span>Start Session <span id="start-session-label"><%= (waveState && waveState.activeSessionNumber) ? waveState.activeSessionNumber : '1' %></span></span>
             </button>
         </section>
 
         <!-- ==================== ACTIVE STATE (3-COLUMN WORKSPACE) ==================== -->
-        <section id="session-active-view" style="<%= waveState.isSessionActive ? 'display: block;' : 'display: none !important;' %>">
+        <section id="session-active-view" style="<%= (waveState && waveState.isSessionActive) ? 'display: block;' : 'display: none !important;' %>">
             <!-- Active Session Header Bar -->
             <div class="session-active-bar">
                 <div class="session-status-tag">
                     <span class="pulse-dot"></span>
-                    <strong id="session-title-tag">Wave <%= waveState.currentWave %> — Session <%= waveState.activeSessionNumber %></strong>
-                    <span class="session-timer" id="session-live-timer" data-started="<%= waveState.activeSessionStartedAt || '' %>">00:00:00</span>
+                    <strong id="session-title-tag">Wave <%= (waveState && waveState.currentWave) ? waveState.currentWave : '1' %> — Session <%= (waveState && waveState.activeSessionNumber) ? waveState.activeSessionNumber : '1' %></strong>
+                    <span class="session-timer" id="session-live-timer" data-started="<%= (waveState && waveState.activeSessionStartedAt) ? waveState.activeSessionStartedAt : '' %>">00:00:00</span>
                 </div>
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <button class="icon-button" type="button" id="refresh-session-data-btn" title="Refresh Live Data">
@@ -73,29 +73,54 @@
                 <!-- COLUMN 1: Staff & ER:LC Roster -->
                 <aside class="panel-box">
                     <div class="panel-header">
-                        <h3>Connected Staff (<span id="staff-count"><%= activeStaff.length %></span>)</h3>
+                        <h3>Connected Staff (<span id="staff-count"><%= (activeStaff && Array.isArray(activeStaff)) ? activeStaff.length : 0 %></span>)</h3>
                     </div>
                     <div class="staff-list" id="staff-list-container">
-                        <% activeStaff.forEach(s => { %>
-                            <div class="staff-item">
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="pulse-dot" style="width: 6px; height: 6px;"></span>
-                                    <span style="font-size: 13px; font-weight: 600;"><%= s.name %></span>
+                        <% if (activeStaff && activeStaff.length) { %>
+                            <% activeStaff.forEach(s => { %>
+                                <div class="staff-item">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="pulse-dot" style="width: 6px; height: 6px;"></span>
+                                        <span style="font-size: 13px; font-weight: 600;"><%= s.name %></span>
+                                    </div>
+                                    <span class="badge badge-active" style="font-size: 10px;">Connected</span>
                                 </div>
-                                <span class="badge badge-active" style="font-size: 10px;">Connected</span>
-                            </div>
-                        <% }) %>
+                            <% }) %>
+                        <% } else { %>
+                            <div class="empty-box" style="padding: 12px; font-size: 12px;">No other staff connected.</div>
+                        <% } %>
                     </div>
 
                     <div class="panel-header" style="margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--border);">
-                        <h3>Live ER:LC Players (<span id="player-count"><%= session?.players?.length || 0 %></span>)</h3>
+                        <h3>Live ER:LC Players (<span id="player-count"><%= (session && session.players) ? session.players.length : 0 %></span>)</h3>
                     </div>
                     <div class="search-box">
                         <i data-lucide="search"></i>
                         <input type="search" placeholder="Search in-game players..." id="player-search-input">
                     </div>
                     <div class="player-list" id="player-list-container" style="max-height: 380px;">
-                        <!-- Injected by JS -->
+                        <% if (session && session.players && session.players.length) { %>
+                            <% session.players.forEach(p => { %>
+                                <div class="player-item">
+                                    <div class="player-left">
+                                        <% if (p.avatarUrl) { %>
+                                            <img class="player-avatar" src="<%= p.avatarUrl %>" alt="">
+                                        <% } else { %>
+                                            <div class="player-avatar" style="display:grid;place-items:center;font-size:11px;font-weight:700;"><%= (p.username || 'P')[0].toUpperCase() %></div>
+                                        <% } %>
+                                        <div class="player-meta">
+                                            <strong><%= p.username %></strong>
+                                            <small><%= p.team || 'Player' %><%= p.callsign ? ` · ${p.callsign}` : '' %></small>
+                                        </div>
+                                    </div>
+                                    <button class="btn-kick-icon" type="button" title="Kick from Session">
+                                        <i data-lucide="user-x"></i>
+                                    </button>
+                                </div>
+                            <% }) %>
+                        <% } else { %>
+                            <div class="empty-box" style="padding: 16px;">No players connected in game.</div>
+                        <% } %>
                     </div>
                 </aside>
 
@@ -141,21 +166,21 @@
                 <!-- COLUMN 3: Current Session Live Feed -->
                 <aside class="panel-box">
                     <div class="panel-header">
-                        <h3>Session Feed (<span id="session-note-count"><%= currentSessionNotes.length %></span>)</h3>
+                        <h3>Session Feed (<span id="session-note-count"><%= (currentSessionNotes && Array.isArray(currentSessionNotes)) ? currentSessionNotes.length : 0 %></span>)</h3>
                     </div>
                     <div class="note-feed" id="session-note-feed" style="max-height: 560px;">
-                        <% if (!currentSessionNotes.length) { %>
+                        <% if (!currentSessionNotes || !currentSessionNotes.length) { %>
                             <div class="empty-box" id="empty-feed-msg">No notes logged yet for this session.</div>
                         <% } else { %>
                             <% currentSessionNotes.forEach(note => { %>
-                                <div class="note-entry" data-outcome="<%= note.outcome %>" data-note-id="<%= note.id %>">
+                                <div class="note-entry" data-outcome="<%= note.outcome || 'neutral' %>" data-note-id="<%= note.id %>">
                                     <div class="note-entry-top">
                                         <strong><%= note.traineeUsername %></strong>
                                         <small><%= new Date(note.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) %></small>
                                     </div>
                                     <div class="note-entry-body"><%= note.content %></div>
                                     <div class="note-entry-footer">
-                                        <span class="badge badge-<%= note.outcome %>"><%= note.outcome %></span>
+                                        <span class="badge badge-<%= note.outcome || 'neutral' %>"><%= note.outcome %></span>
                                         <small style="color: var(--text-dim);">Logged by <%= note.staffUsername %></small>
                                     </div>
                                 </div>
@@ -204,6 +229,6 @@
     <!-- Toast Notifications -->
     <div class="toast-box" id="toast-box"></div>
 
-    <script type="application/json" id="initial-session-data"><%- JSON.stringify({ waveState, session, activeStaff, currentSessionNotes, currentUser: user.username }).replace(/</g, '\\u003c') %></script>
+    <script type="application/json" id="initial-session-data"><%- JSON.stringify({ waveState: waveState || {}, session: session || {}, activeStaff: activeStaff || [], currentSessionNotes: currentSessionNotes || [], currentUser: (user && user.username) || 'Staff' }).replace(/</g, '\\u003c') %></script>
 </body>
 </html>
