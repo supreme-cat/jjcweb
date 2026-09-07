@@ -16,11 +16,21 @@ const CURRENT_TRAINEES_FILE = path.join(NESTED_DATA_DIR, 'current_trainees.json'
 const FORMER_TRAINEES_FILE = path.join(NESTED_DATA_DIR, 'former_trainees.json');
 const KICKED_TRAINEES_FILE = path.join(NESTED_DATA_DIR, 'kicked_trainees.json');
 
+// Automatically build directory layouts on app boot
+ensureDataDir();
+
+
 function ensureDataDir() {
+    // Ensure parent storage directory exists
     if (!fs.existsSync(DATA_DIR)) {
         fs.mkdirSync(DATA_DIR, { recursive: true });
     }
+    // Ensure nested data folder exists to prevent write errors
+    if (!fs.existsSync(NESTED_DATA_DIR)) {
+        fs.mkdirSync(NESTED_DATA_DIR, { recursive: true });
+    }
 }
+
 
 function readJsonSafe(filePath, fallback = {}) {
     try {
