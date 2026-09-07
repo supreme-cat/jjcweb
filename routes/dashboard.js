@@ -185,8 +185,12 @@ router.post('/api/notes', ensureStaff, (req, res) => {
 });
 
 router.delete('/api/notes/:id', ensureStaff, (req, res) => {
-    const success = storage.deleteTraineeNote(req.params.id);
-    res.json({ ok: success, currentSessionNotes: storage.getCurrentNotesForActiveSession() });
+    const success = storage.deleteTraineeNote(req.params.id, req.user.username, req.user.id);
+    res.json({
+        ok: success,
+        currentSessionNotes: storage.getCurrentNotesForActiveSession(),
+        trainees: storage.getCurrentTrainees()
+    });
 });
 
 // Touch Presence

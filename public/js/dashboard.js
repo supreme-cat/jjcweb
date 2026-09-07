@@ -692,13 +692,47 @@ function mountWaveManagement() {
                 entry.innerHTML = `
                     <div class="note-entry-top">
                         <strong>By ${note.staffUsername}</strong>
-                        <small>${new Date(note.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</small>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <small>${new Date(note.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</small>
+                            <button class="btn-delete-note" type="button" title="Delete Note" style="background: none; border: none; padding: 2px 4px; color: var(--text-dim); cursor: pointer; border-radius: 4px; display: inline-flex; align-items: center; transition: color 0.1s ease;" onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='var(--text-dim)'">
+                                <i data-lucide="trash-2" style="width: 13px; height: 13px;"></i>
+                            </button>
+                        </div>
                     </div>
                     <div class="note-entry-body">${note.content}</div>
                     <div class="note-entry-footer">
                         <span class="badge badge-${note.outcome || 'neutral'}">${note.outcome}</span>
                     </div>
                 `;
+
+                const delBtn = entry.querySelector('.btn-delete-note');
+                if (delBtn) {
+                    delBtn.addEventListener('click', async (e) => {
+                        e.stopPropagation();
+                        if (!confirm('Are you sure you want to delete this observation note?')) return;
+                        delBtn.disabled = true;
+                        try {
+                            const res = await fetch(`/dashboard/api/notes/${note.id}`, { method: 'DELETE' });
+                            const data = await res.json();
+                            if (data.ok) {
+                                state.activeNotesTrainee.notes = (state.activeNotesTrainee.notes || []).filter((n) => n.id !== note.id);
+                                if (data.trainees) {
+                                    state.trainees = data.trainees;
+                                    const updated = state.trainees.find((t) => (t.robloxUsername || '').toLowerCase() === (state.activeNotesTrainee.robloxUsername || '').toLowerCase());
+                                    if (updated) state.activeNotesTrainee = updated;
+                                }
+                                renderNotesModalList();
+                                sortAndRenderTrainees();
+                                showToast('Note deleted.', 'info');
+                            } else {
+                                showToast(data.error || 'Failed to delete note.', 'error');
+                            }
+                        } catch {
+                            showToast('Error deleting note.', 'error');
+                        }
+                    });
+                }
+
                 list.appendChild(entry);
             });
 
