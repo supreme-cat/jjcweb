@@ -2,7 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-const DATA_DIR = path.join(__dirname, '../data');
+// Standardized persistent storage path for Dokploy and local environments
+const DATA_DIR = process.env.DATA_PATH || path.join(__dirname, '../data');
 const WAVE_STATE_FILE = path.join(DATA_DIR, 'wave_state.json');
 const CURRENT_TRAINEES_FILE = path.join(DATA_DIR, 'current_trainees.json');
 const FORMER_TRAINEES_FILE = path.join(DATA_DIR, 'former_trainees.json');
@@ -374,14 +375,15 @@ function getCurrentNotesForActiveSession() {
 }
 
 function deleteTraineeNote(noteId, staffUsername = 'Staff', staffId = null) {
+    if (!noteId) return false;
     const trainees = getCurrentTrainees();
     let deletedNote = null;
 
     trainees.forEach((t) => {
         if (Array.isArray(t.notes)) {
-            const found = t.notes.find((n) => n.id === noteId);
+            const found = t.notes.find((n) => String(n.id) === String(noteId));
             if (found) deletedNote = found;
-            t.notes = t.notes.filter((n) => n.id !== noteId);
+            t.notes = t.notes.filter((n) => String(n.id) !== String(noteId));
         }
     });
 

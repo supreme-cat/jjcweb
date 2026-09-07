@@ -45,6 +45,7 @@ app.use(passport.session());
 app.use('/', require('./routes/index'));
 app.use('/auth', require('./routes/auth'));
 app.use('/dashboard', require('./routes/dashboard'));
+app.use('/api', require('./routes/dashboard'));
 
 // Initialize bot and Roblox auth
 initRoblox();

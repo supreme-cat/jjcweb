@@ -612,13 +612,17 @@ function mountWaveManagement() {
                             ${t.discordAvatar ? `<img class="discord-img" src="${t.discordAvatar}" alt="">` : ''}
                         </div>
                         <div class="trainee-meta">
-                            <strong>${t.robloxUsername}</strong>
+                            /* Hyperlink to official Roblox profile */
+                            <a href="${t.robloxId ? `https://www.roblox.com/users/${t.robloxId}/profile` : `https://www.roblox.com/search/users?keyword=${encodeURIComponent(t.robloxUsername || '')}`}" target="_blank" rel="noopener noreferrer" class="roblox-profile-link" title="Open ${t.robloxUsername}'s Roblox Profile in new tab" style="color: inherit; text-decoration: underline; text-underline-offset: 2px; font-weight: 700; font-size: 15px; display: inline-flex; align-items: center; gap: 4px;">
+                                <span>${t.robloxUsername}</span>
+                                <i data-lucide="external-link" style="width: 12px; height: 12px; opacity: 0.6;"></i>
+                            </a>
                             <small>${t.discordTag}</small>
                         </div>
                     </div>
                     <div class="trainee-status-row" style="margin-top:10px;">
                         ${verdictBadge}
-                        <span style="font-size:12px;font-weight:600;color:var(--text-muted);">${notesCount} notes</span>
+                        <span class="trainee-note-counter" style="font-size:12px;font-weight:600;color:var(--text-muted);">${notesCount} notes</span>
                     </div>
                 </div>
                 <div class="trainee-actions-row">
@@ -681,20 +685,22 @@ function mountWaveManagement() {
         sectionKeys.forEach((section) => {
             const groupEl = document.createElement('div');
             groupEl.className = 'session-note-group';
-            groupEl.innerHTML = `<div class="session-note-group-title">${section} (${grouped[section].length} note${grouped[section].length !== 1 ? 's' : ''})</div>`;
+            groupEl.innerHTML = `<div class="session-note-group-title">${section} (<span class="group-note-count">${grouped[section].length}</span> note${grouped[section].length !== 1 ? 's' : ''})</div>`;
             const list = document.createElement('div');
             list.style.cssText = 'display:flex;flex-direction:column;gap:8px;';
 
             grouped[section].forEach((note) => {
+                const noteId = note.id || String(note.createdAt || Math.random());
                 const entry = document.createElement('div');
                 entry.className = 'note-entry';
                 entry.setAttribute('data-outcome', note.outcome || 'neutral');
+                entry.setAttribute('data-note-id', noteId);
                 entry.innerHTML = `
                     <div class="note-entry-top">
                         <strong>By ${note.staffUsername}</strong>
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <small>${new Date(note.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</small>
-                            <button class="btn-delete-note" type="button" title="Delete Note" style="background: none; border: none; padding: 2px 4px; color: var(--text-dim); cursor: pointer; border-radius: 4px; display: inline-flex; align-items: center; transition: color 0.1s ease;" onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='var(--text-dim)'">
+                            <button class="btn-delete-note" type="button" data-note-id="${noteId}" title="Delete Note" style="background: none; border: none; padding: 3px 6px; color: var(--text-dim); cursor: pointer; border-radius: 4px; display: inline-flex; align-items: center; transition: color 0.12s ease, background 0.12s ease;" onmouseover="this.style.color='#f87171'; this.style.background='rgba(248,113,113,0.1)';" onmouseout="this.style.color='var(--text-dim)'; this.style.background='none';">
                                 <i data-lucide="trash-2" style="width: 13px; height: 13px;"></i>
                             </button>
                         </div>
@@ -708,27 +714,43 @@ function mountWaveManagement() {
                 const delBtn = entry.querySelector('.btn-delete-note');
                 if (delBtn) {
                     delBtn.addEventListener('click', async (e) => {
+                        e.preventDefault();
                         e.stopPropagation();
                         if (!confirm('Are you sure you want to delete this observation note?')) return;
                         delBtn.disabled = true;
                         try {
-                            const res = await fetch(`/dashboard/api/notes/${note.id}`, { method: 'DELETE' });
+                            const res = await fetch(`/api/notes/${encodeURIComponent(noteId)}`, { method: 'DELETE' });
                             const data = await res.json();
                             if (data.ok) {
-                                state.activeNotesTrainee.notes = (state.activeNotesTrainee.notes || []).filter((n) => n.id !== note.id);
+                                // Animate and remove from DOM immediately
+                                entry.style.opacity = '0';
+                                entry.style.transition = 'opacity 0.15s ease, transform 0.15s ease';
+                                entry.style.transform = 'scale(0.96)';
+                                setTimeout(() => {
+                                    entry.remove();
+                                    if (list.children.length === 0) {
+                                        groupEl.remove();
+                                    }
+                                    if (refs.notesContainer.children.length === 0) {
+                                        refs.notesContainer.innerHTML = '<div class="empty-box" style="padding:24px;">No notes recorded for this candidate yet.</div>';
+                                    }
+                                }, 150);
+
+                                state.activeNotesTrainee.notes = (state.activeNotesTrainee.notes || []).filter((n) => String(n.id) !== String(noteId));
                                 if (data.trainees) {
                                     state.trainees = data.trainees;
                                     const updated = state.trainees.find((t) => (t.robloxUsername || '').toLowerCase() === (state.activeNotesTrainee.robloxUsername || '').toLowerCase());
                                     if (updated) state.activeNotesTrainee = updated;
                                 }
-                                renderNotesModalList();
                                 sortAndRenderTrainees();
                                 showToast('Note deleted.', 'info');
                             } else {
                                 showToast(data.error || 'Failed to delete note.', 'error');
+                                delBtn.disabled = false;
                             }
                         } catch {
                             showToast('Error deleting note.', 'error');
+                            delBtn.disabled = false;
                         }
                     });
                 }

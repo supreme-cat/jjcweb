@@ -4,12 +4,12 @@ const path = require('path');
 const noblox = require('noblox.js');
 const robloxService = require('./roblox');
 
-const cacheFilePath = path.join(__dirname, '../data/users.json');
+const DATA_DIR = process.env.DATA_PATH || path.join(__dirname, '../data');
+const cacheFilePath = path.join(DATA_DIR, 'users.json');
 
 function loadCache() {
     try {
-        const dir = path.dirname(cacheFilePath);
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
         if (!fs.existsSync(cacheFilePath)) fs.writeFileSync(cacheFilePath, '{}');
         return JSON.parse(fs.readFileSync(cacheFilePath, 'utf8') || '{}');
     } catch (err) {
@@ -102,7 +102,7 @@ async function getDiscordIdFromRoblox(robloxId, robloxUsername) {
 
     // 2. Check current_trainees.json
     try {
-        const traineesPath = path.join(__dirname, '../data/current_trainees.json');
+        const traineesPath = path.join(DATA_DIR, 'current_trainees.json');
         if (fs.existsSync(traineesPath)) {
             const trainees = JSON.parse(fs.readFileSync(traineesPath, 'utf8') || '[]');
             const found = trainees.find((t) => 

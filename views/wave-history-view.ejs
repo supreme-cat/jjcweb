@@ -40,7 +40,7 @@
             ]; %>
             <% stats.forEach(stat => { %>
                 <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center;">
-                    <div style="font-size: 28px; font-weight: 700; color: <%= stat.color %>;"><%= stat.value %></div>
+                    <div class="stat-value" data-color="<%= stat.color %>"><%= stat.value %></div>
                     <div style="font-size: 11px; color: var(--text-dim); text-transform: uppercase; font-weight: 700; margin-top: 4px;"><%= stat.label %></div>
                 </div>
             <% }) %>
@@ -92,16 +92,22 @@
                                 const isFail = t.status === 'failed';
                                 const isKicked = t.status === 'kicked';
                                 const allNotes = t.notes || [];
+                                const cardStyle = isKicked
+                                    ? 'background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; opacity: 0.5;'
+                                    : 'background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px;';
+                                const robloxProfileUrl = t.robloxId
+                                    ? 'https://www.roblox.com/users/' + t.robloxId + '/profile'
+                                    : 'https://www.roblox.com/search/users?keyword=' + encodeURIComponent(t.robloxUsername || '');
 
                                 // Group by section
                                 const grouped = {};
                                 allNotes.forEach(n => {
-                                    const sec = n.section || (n.source === 'Wave Management' ? 'Wave Management' : `Session ${n.sessionNumber || 1}`);
+                                    const sec = n.section || (n.source === 'Wave Management' ? 'Wave Management' : 'Session ' + (n.sessionNumber || 1));
                                     if (!grouped[sec]) grouped[sec] = [];
                                     grouped[sec].push(n);
                                 });
                             %>
-                                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; <%= isKicked ? 'opacity: 0.5;' : '' %>">
+                                <div style="<%= cardStyle %>">
                                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
                                         <div style="display: flex; align-items: center; gap: 10px;">
                                             <% if (t.avatarUrl) { %>
@@ -110,7 +116,9 @@
                                                 <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--surface-muted); border: 1px solid var(--border); display: grid; place-items: center; font-weight: 700; font-size: 13px;"><%= (t.robloxUsername || 'T')[0].toUpperCase() %></div>
                                             <% } %>
                                             <div>
-                                                <strong style="font-size: 14px;"><%= t.robloxUsername %></strong>
+                                                <a href="<%= robloxProfileUrl %>" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline; text-underline-offset: 2px; font-weight: 700; font-size: 14px;">
+                                                    <%= t.robloxUsername %>
+                                                </a>
                                                 <small style="display: block; font-size: 11px; color: var(--text-muted);"><%= t.discordTag %></small>
                                             </div>
                                         </div>
