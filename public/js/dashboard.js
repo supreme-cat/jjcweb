@@ -612,7 +612,6 @@ function mountWaveManagement() {
                             ${t.discordAvatar ? `<img class="discord-img" src="${t.discordAvatar}" alt="">` : ''}
                         </div>
                         <div class="trainee-meta">
-                            /* Hyperlink to official Roblox profile */
                             <a href="${t.robloxId ? `https://www.roblox.com/users/${t.robloxId}/profile` : `https://www.roblox.com/search/users?keyword=${encodeURIComponent(t.robloxUsername || '')}`}" target="_blank" rel="noopener noreferrer" class="roblox-profile-link" title="Open ${t.robloxUsername}'s Roblox Profile in new tab" style="color: inherit; text-decoration: underline; text-underline-offset: 2px; font-weight: 700; font-size: 15px; display: inline-flex; align-items: center; gap: 4px;">
                                 <span>${t.robloxUsername}</span>
                                 <i data-lucide="external-link" style="width: 12px; height: 12px; opacity: 0.6;"></i>
