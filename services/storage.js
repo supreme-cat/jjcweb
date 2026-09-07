@@ -4,12 +4,17 @@ const crypto = require('crypto');
 
 // Standardized persistent storage path for Dokploy and local environments
 const DATA_DIR = process.env.DATA_PATH || path.join(__dirname, '../data');
+
+// Outer data directory files
 const WAVE_STATE_FILE = path.join(DATA_DIR, 'wave_state.json');
-const CURRENT_TRAINEES_FILE = path.join(DATA_DIR, 'current_trainees.json');
-const FORMER_TRAINEES_FILE = path.join(DATA_DIR, 'former_trainees.json');
-const KICKED_TRAINEES_FILE = path.join(DATA_DIR, 'kicked_trainees.json');
 const STAFF_FILE = path.join(DATA_DIR, 'staff.json');
 const AUDIT_LOGS_FILE = path.join(DATA_DIR, 'audit_logs.json');
+
+// Nested data/data/ directory files (Fixed to match your exact folder structure)
+const NESTED_DATA_DIR = path.join(DATA_DIR, 'data');
+const CURRENT_TRAINEES_FILE = path.join(NESTED_DATA_DIR, 'current_trainees.json');
+const FORMER_TRAINEES_FILE = path.join(NESTED_DATA_DIR, 'former_trainees.json');
+const KICKED_TRAINEES_FILE = path.join(NESTED_DATA_DIR, 'kicked_trainees.json');
 
 function ensureDataDir() {
     if (!fs.existsSync(DATA_DIR)) {
