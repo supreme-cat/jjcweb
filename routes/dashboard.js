@@ -34,12 +34,12 @@ router.get('/session', ensureStaff, async (req, res) => {
 });
 
 router.post('/api/session/start', ensureStaff, (req, res) => {
-    const updatedState = storage.startSession();
+    const updatedState = storage.startSession(req.user.username, req.user.id);
     res.json({ ok: true, waveState: updatedState });
 });
 
 router.post('/api/session/end', ensureStaff, (req, res) => {
-    const { updated, sessionRecord } = storage.endSession();
+    const { updated, sessionRecord } = storage.endSession(req.user.username, req.user.id);
     res.json({ ok: true, waveState: updated, sessionRecord });
 });
 
@@ -49,20 +49,6 @@ router.get('/api/session/data', ensureStaff, async (req, res) => {
     const session = await erlcService.fetchServerSession({ force: req.query.force === 'true' });
     const activeStaff = presence.getActiveStaff();
     const currentSessionNotes = storage.getCurrentNotesForActiveSession();
-
-// Example route handler in routes/dashboard.js
-router.get('/session-panel', ensureAuthenticated, async (req, res) => {
-    // Read or define your waveState object (e.g. from current_trainees.json or wave state JSON)
-    const waveState = getWaveState(); // replace with your actual wave state variable/function
-
-    res.render('session-panel', {
-        user: req.user,
-        waveState: waveState || { currentWave: 1 }, // Pass waveState here
-        activeStaff: activeStaff || [],
-        session: session || null,
-        recentNotes: recentNotes || []
-    });
-});
 
     res.json({
         waveState,
@@ -172,7 +158,7 @@ router.post('/api/session/kick', ensureStaff, async (req, res) => {
 
 // Note Logging API
 router.post('/api/notes', ensureStaff, (req, res) => {
-    const { traineeUsername, content, outcome } = req.body;
+    const { traineeUsername, content, outcome, source } = req.body;
 
     if (!traineeUsername || !content) {
         return res.status(400).json({ ok: false, error: 'Roblox Username and observation note text are required.' });
@@ -187,7 +173,8 @@ router.post('/api/notes', ensureStaff, (req, res) => {
         staffAvatar,
         staffId: req.user.id,
         content,
-        outcome: outcome || 'neutral'
+        outcome: outcome || 'neutral',
+        source: source || 'session'
     });
 
     res.json({
@@ -405,6 +392,31 @@ router.post('/api/waves/new', ensureStaff, (req, res) => {
 // History endpoint for past waves
 router.get('/api/waves/history', ensureStaff, (req, res) => {
     res.json({ formerWaves: storage.getFormerWaves() });
+});
+
+// ==================== AUDIT LOGS PAGE ====================
+
+router.get('/audit-logs', ensureStaff, (req, res) => {
+    const logs = storage.getAuditLogs();
+    res.render('audit-logs', { user: req.user, logs });
+});
+
+// ==================== STAFF HISTORY PAGE ====================
+
+router.get('/staff-history', ensureStaff, (req, res) => {
+    const staffAnalytics = storage.getStaffAnalytics();
+    res.render('staff-history', { user: req.user, staffAnalytics });
+});
+
+// ==================== WAVE HISTORY VIEW (READ-ONLY) ====================
+
+router.get('/waves/history/:waveNumber', ensureStaff, (req, res) => {
+    const waveNumber = parseInt(req.params.waveNumber, 10);
+    const wave = storage.getFormerWaveByNumber(waveNumber);
+    if (!wave) {
+        return res.status(404).send('Wave not found.');
+    }
+    res.render('wave-history-view', { user: req.user, wave });
 });
 
 module.exports = router;

@@ -45,10 +45,16 @@ async function fetchWaveMembers() {
     }
 
     try {
-        const guild = await client.guilds.fetch(guildId);
-        if (!guild) return [];
+        const guild = client.guilds.cache.get(guildId) || await client.guilds.fetch(guildId).catch(() => null);
+        if (!guild) {
+            console.warn('[BOT] Guild not found or bot not ready.');
+            return [];
+        }
 
-        const members = await guild.members.fetch();
+        // Force member list load
+        await guild.members.fetch().catch(() => {});
+
+        const members = guild.members.cache;
         const trainees = [];
 
         members.forEach((member) => {
@@ -62,7 +68,7 @@ async function fetchWaveMembers() {
             }
         });
 
-        console.log(`[BOT] Fetched ${trainees.length} wave trainees matching role(s): ${traineeRoleIds.join(', ')}`);
+        console.log(`[BOT] Fetched ${trainees.length} wave trainees matching role: ${roleId}`);
         return trainees;
     } catch (err) {
         console.error('[BOT] Error fetching wave members:', err.message);
