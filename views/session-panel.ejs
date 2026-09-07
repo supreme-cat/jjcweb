@@ -37,7 +37,7 @@
 
     <main class="session-container">
         <!-- ==================== INACTIVE STATE (START SESSION HERO) ==================== -->
-        <section class="start-session-hero" id="session-inactive-view" style="<%= (waveState && waveState.isSessionActive) ? 'display: none !important;' : 'display: flex;' %>">
+        <section class="start-session-hero" id="session-inactive-view" class="<%= (waveState && waveState.isSessionActive) ? 'hidden' : 'visible-flex' %>">
             <i data-lucide="terminal" style="width: 44px; height: 44px; margin-bottom: 12px; color: var(--text-dim);"></i>
             <h2>No Active Training Session</h2>
             <p>Training sessions must be started to monitor live ER:LC players, enforce active session blacklists, and log notes for Wave <%= (waveState && waveState.currentWave) ? waveState.currentWave : '1' %>.</p>
@@ -48,7 +48,7 @@
         </section>
 
         <!-- ==================== ACTIVE STATE (3-COLUMN WORKSPACE) ==================== -->
-        <section id="session-active-view" style="<%= (waveState && waveState.isSessionActive) ? 'display: block;' : 'display: none !important;' %>">
+        <section id="session-active-view" class="<%= (waveState && waveState.isSessionActive) ? 'visible-block' : 'hidden' %>">
             <!-- Active Session Header Bar -->
             <div class="session-active-bar">
                 <div class="session-status-tag">
